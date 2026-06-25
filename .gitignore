@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System files
+Thumbs.db
+EHthumbs.db
+Desktop.ini
+.DS_Store
+
+# Local/temporary files
+.gemini/
+dist/
+build/
+*.log
