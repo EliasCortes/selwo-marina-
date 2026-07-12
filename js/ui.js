@@ -1,5 +1,5 @@
 /* ============================================================
-   UI - Shared UI Components for Control Animal Selwo
+   UI - Shared UI Components for Control Animal Selwo v2
    ============================================================ */
 window.App = window.App || {};
 
@@ -31,7 +31,11 @@ App.UI = (() => {
     const icons = { success: '✓', error: '✕', info: 'ℹ' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${icons[type] || 'ℹ'}</span><span>${H.escapeHtml(message)}</span>`;
+    toast.innerHTML = `
+      <span class="toast-icon">${icons[type] || 'ℹ'}</span>
+      <span class="toast-message">${H.escapeHtml(message)}</span>
+      <div class="toast-progress"><div class="toast-progress-bar" style="animation-duration:${duration}ms"></div></div>
+    `;
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -184,6 +188,9 @@ App.UI = (() => {
         case 'date':
           html += `<input class="form-input" type="date" id="field-${field.name}" name="${field.name}" value="${displayValue}" ${required}>`;
           break;
+        case 'file':
+          html += `<input class="form-input" type="file" id="field-${field.name}" name="${field.name}" accept="image/*" ${required}>`;
+          break;
         default:
           html += `<input class="form-input" type="text" id="field-${field.name}" name="${field.name}" value="${H.escapeHtml(String(displayValue))}" placeholder="${field.placeholder || ''}" ${required}>`;
       }
@@ -293,18 +300,136 @@ App.UI = (() => {
     return html;
   }
 
-  // ── App Header ────────────────────────────────────────────
+  // ── App Header with Global Search and Alerts ──────────────
   /**
-   * Render the app header with back button and title.
+   * Render the app header with back button, title, global search, and alerts.
    */
   function renderHeader(title, backPath = null) {
     return `
       <header class="app-header">
         ${backPath ? `<button class="header-back" onclick="App.Router.navigate('${backPath}')" aria-label="Volver">← <span class="header-back-text">Volver</span></button>` : ''}
         <span class="header-title">${H.escapeHtml(title)}</span>
-        <img src="assets/logo.png" alt="Selwo Marina" class="header-logo" onclick="App.Router.navigate('/menu')" style="cursor:pointer">
+        <div class="header-actions">
+          <div class="global-search-container" id="global-search-container">
+            <button class="header-btn" id="global-search-toggle" aria-label="Buscar" title="Buscar animal">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <div class="global-search-panel" id="global-search-panel">
+              <input type="text" class="global-search-input" id="global-search-input" placeholder="Buscar por nombre o especie..." autocomplete="off">
+              <div class="global-search-results" id="global-search-results"></div>
+            </div>
+          </div>
+          <div class="alerts-container" id="alerts-container">
+            <button class="header-btn" id="alerts-toggle" aria-label="Alertas" title="Ver alertas">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span class="alerts-badge" id="alerts-badge-header" style="display:none">0</span>
+            </button>
+            <div class="alerts-dropdown" id="alerts-dropdown"></div>
+          </div>
+          <img src="assets/Logo_Selwo_Marina_Header_PNG.jpg" alt="Selwo Marina" class="header-logo" onclick="App.Router.navigate('/menu')" style="cursor:pointer" title="Ir al menú principal">
+        </div>
       </header>
     `;
+  }
+
+  /**
+   * Initialize header interactions (search + alerts).
+   * Call this after inserting header into DOM.
+   */
+  async function initHeaderInteractions() {
+    // Global Search
+    const searchToggle = document.getElementById('global-search-toggle');
+    const searchPanel = document.getElementById('global-search-panel');
+    const searchInput = document.getElementById('global-search-input');
+    const searchResults = document.getElementById('global-search-results');
+
+    if (searchToggle && searchPanel) {
+      searchToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchPanel.classList.toggle('open');
+        if (searchPanel.classList.contains('open') && searchInput) {
+          setTimeout(() => searchInput.focus(), 100);
+        }
+      });
+    }
+
+    if (searchInput && searchResults) {
+      const doSearch = H.debounce(async () => {
+        const query = searchInput.value.trim();
+        if (query.length < 2) {
+          searchResults.innerHTML = '';
+          searchResults.style.display = 'none';
+          return;
+        }
+        try {
+          const results = await App.DB.AnimalService.search(query);
+          if (results.length === 0) {
+            searchResults.innerHTML = '<div class="search-no-results">No se encontraron resultados</div>';
+          } else {
+            searchResults.innerHTML = results.slice(0, 8).map(animal => {
+              const dept = H.getDeptMeta(animal.department);
+              return `
+                <div class="search-result-item" onclick="App.Router.navigate('/animal/${animal.id}/general'); document.getElementById('global-search-panel').classList.remove('open');">
+                  <div class="search-result-emoji">${H.getSpeciesEmoji(animal.species)}</div>
+                  <div class="search-result-info">
+                    <div class="search-result-name">${H.escapeHtml(animal.name)}</div>
+                    <div class="search-result-meta">${H.escapeHtml(animal.species)} · ${dept.name}</div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+          searchResults.style.display = 'block';
+        } catch {
+          searchResults.innerHTML = '';
+          searchResults.style.display = 'none';
+        }
+      }, 200);
+
+      searchInput.addEventListener('input', doSearch);
+    }
+
+    // Close search on click outside
+    document.addEventListener('click', (e) => {
+      if (searchPanel && !searchPanel.contains(e.target) && e.target !== searchToggle) {
+        searchPanel.classList.remove('open');
+      }
+    });
+
+    // Alerts
+    const alertsToggle = document.getElementById('alerts-toggle');
+    const alertsDropdown = document.getElementById('alerts-dropdown');
+    const alertsBadge = document.getElementById('alerts-badge-header');
+
+    if (alertsToggle && alertsDropdown) {
+      // Load alerts count
+      try {
+        const count = await App.Alerts.getActiveCount();
+        if (alertsBadge) {
+          alertsBadge.textContent = count > 99 ? '99+' : count;
+          alertsBadge.style.display = count > 0 ? 'flex' : 'none';
+        }
+      } catch { /* ignore */ }
+
+      alertsToggle.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const isOpen = alertsDropdown.classList.contains('open');
+        if (!isOpen) {
+          alertsDropdown.innerHTML = await App.Alerts.renderAlertsDropdown();
+          // Extract the inner content (we returned a wrapper, just use innerHTML)
+          const temp = document.createElement('div');
+          temp.innerHTML = await App.Alerts.renderAlertsDropdown();
+          alertsDropdown.innerHTML = temp.firstElementChild ? temp.firstElementChild.innerHTML : temp.innerHTML;
+        }
+        alertsDropdown.classList.toggle('open');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (alertsDropdown && !alertsDropdown.contains(e.target) && e.target !== alertsToggle) {
+          alertsDropdown.classList.remove('open');
+        }
+      });
+    }
   }
 
   // ── Data Table Renderer ───────────────────────────────────
@@ -380,6 +505,7 @@ App.UI = (() => {
     renderBreadcrumbs,
     renderSearchBar,
     renderHeader,
+    initHeaderInteractions,
     renderTable,
   };
 })();

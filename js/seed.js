@@ -215,10 +215,14 @@ App.Seed = (() => {
       await DB.add('animals', animal);
     }
 
-    // Seed diets
-    for (const diet of generateDiets()) {
-      await DB.add('diets', diet);
-    }
+    // ── Dietas: DESACTIVADO ──────────────────────────────────
+    // El módulo de dietas ahora consume datos exclusivamente de Supabase
+    // (tabla diet_records). No se siembran datos mock en IndexedDB para
+    // evitar desincronización con la base de datos real.
+    // for (const diet of generateDiets()) {
+    //   await DB.add('diets', diet);
+    // }
+    console.log('[Seed] Dietas omitidas — migradas a Supabase.');
 
     // Seed trainings
     for (const training of generateTrainings()) {

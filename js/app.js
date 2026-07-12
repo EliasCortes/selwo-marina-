@@ -1,5 +1,5 @@
 /* ============================================================
-   APP - Main Application Entry Point for Control Animal Selwo
+   APP - Main Application Entry Point for Control Animal Selwo v2
    ============================================================ */
 window.App = window.App || {};
 
@@ -19,7 +19,7 @@ window.App = window.App || {};
    * Initialize the application.
    */
   async function init() {
-    console.log('[App] Initializing Control Animal Selwo...');
+    console.log('[App] Initializing Control Animal Selwo v2...');
 
     try {
       // 1. Initialize database
@@ -32,10 +32,18 @@ window.App = window.App || {};
         console.log('[App] Test data seeded successfully.');
       }
 
-      // 3. Setup routes
+      // 3. Generate initial alerts
+      try {
+        await App.Alerts.generateAlerts();
+        console.log('[App] Alerts generated.');
+      } catch (err) {
+        console.warn('[App] Alert generation skipped:', err.message);
+      }
+
+      // 4. Setup routes
       setupRoutes();
 
-      // 4. Start router
+      // 5. Start router
       Router.init();
 
       console.log('[App] Application ready!');
@@ -64,6 +72,9 @@ window.App = window.App || {};
 
     // Main menu
     Router.add('/menu', () => Views.renderMenu());
+
+    // Favorites
+    Router.add('/favorites', () => Views.renderFavorites());
 
     // Department view
     Router.add('/dept/:deptId', (params) => Views.renderDepartment(params));

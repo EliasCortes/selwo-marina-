@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Control Animal Selwo — Sistema profesional de gestión de animales para parques zoológicos y marinos. Gestiona dietas, entrenos, pesos, enriquecimientos y veterinaria.">
+  <meta name="description"
+    content="Control Animal Selwo — Sistema profesional de gestión de animales para parques zoológicos y marinos. Gestiona dietas, entrenos, pesos, enriquecimientos y veterinaria.">
   <meta name="theme-color" content="#0a2647">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,18 +20,37 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
   <!-- App Styles -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=6">
 
   <!-- Favicon (inline SVG) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦭</text></svg>">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦭</text></svg>">
+
+  <!-- Import Map para resolver dependencias ES6 en navegadores nativos -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm",
+        "../assets/Fondoaves.jpg": "data:text/javascript,export default 'assets/Fondoaves.jpg';",
+        "../assets/FondoleonesM.jpg": "data:text/javascript,export default 'assets/FondoleonesM.jpg';",
+        "../assets/Fondoamazonia.jpg": "data:text/javascript,export default 'assets/Fondoamazonia.jpg';",
+        "../assets/Fondopingu.jpg": "data:text/javascript,export default 'assets/Fondopingu.jpg';",
+        "../assets/Logo_Selwo_Marina_Header_PNG.jpg": "data:text/javascript,export default 'assets/Logo_Selwo_Marina_Header_PNG.jpg';"
+      }
+    }
+  </script>
 </head>
+
 <body>
   <!-- App Root -->
   <div id="app">
     <!-- Loading state while JS initializes -->
-    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#041c2c,#0a2647,#0f3460);">
+    <div
+      style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#041c2c,#0a2647,#0f3460);">
       <div style="text-align:center;color:white;">
-        <div class="loading-spinner" style="width:48px;height:48px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00b4d8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1.5rem;"></div>
+        <div class="loading-spinner"
+          style="width:48px;height:48px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00b4d8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1.5rem;">
+        </div>
         <p style="opacity:0.7;">Cargando Control Animal...</p>
       </div>
     </div>
@@ -40,8 +61,11 @@
   <script src="js/router.js"></script>
   <script src="js/database.js"></script>
   <script src="js/seed.js"></script>
+  <script src="js/photos.js"></script>
+  <script src="js/alerts.js"></script>
   <script src="js/ui.js"></script>
-  <script src="js/views.js"></script>
-  <script src="js/app.js"></script>
+  <script type="module" src="js/views.js?v=6"></script>
+  <script type="module" src="js/app.js?v=6"></script>
 </body>
+
 </html>

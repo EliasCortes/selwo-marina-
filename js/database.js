@@ -1,5 +1,5 @@
 /* ============================================================
-   DATABASE - IndexedDB Layer for Control Animal Selwo
+   DATABASE - IndexedDB Layer for Control Animal Selwo v2
    ============================================================ */
 window.App = window.App || {};
 
@@ -7,10 +7,10 @@ App.DB = (() => {
   'use strict';
 
   const DB_NAME = 'ControlAnimalSelwo';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let db = null;
 
-  const STORES = ['animals', 'diets', 'trainings', 'weights', 'enrichments', 'veterinary'];
+  const STORES = ['animals', 'diets', 'trainings', 'weights', 'enrichments', 'veterinary', 'photos', 'favorites', 'alerts', 'attachments', 'users'];
 
   /**
    * Initialize the database: open connection and create stores/indexes.
@@ -21,26 +21,67 @@ App.DB = (() => {
 
       request.onupgradeneeded = (event) => {
         const database = event.target.result;
+        const oldVersion = event.oldVersion;
 
-        // Animals store
-        if (!database.objectStoreNames.contains('animals')) {
-          const store = database.createObjectStore('animals', { keyPath: 'id' });
-          store.createIndex('department', 'department', { unique: false });
-          store.createIndex('species', 'species', { unique: false });
-          store.createIndex('zims_id', 'zims_id', { unique: true });
-          store.createIndex('name', 'name', { unique: false });
-          store.createIndex('status', 'status', { unique: false });
+        // ── V1 Stores ────────────────────────────────────────
+        if (oldVersion < 1) {
+          // Animals store
+          if (!database.objectStoreNames.contains('animals')) {
+            const store = database.createObjectStore('animals', { keyPath: 'id' });
+            store.createIndex('department', 'department', { unique: false });
+            store.createIndex('species', 'species', { unique: false });
+            store.createIndex('zims_id', 'zims_id', { unique: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('status', 'status', { unique: false });
+          }
+
+          // Record stores (diets, trainings, weights, enrichments, veterinary)
+          const recordStores = ['diets', 'trainings', 'weights', 'enrichments', 'veterinary'];
+          recordStores.forEach(storeName => {
+            if (!database.objectStoreNames.contains(storeName)) {
+              const store = database.createObjectStore(storeName, { keyPath: 'id' });
+              store.createIndex('animal_id', 'animal_id', { unique: false });
+              store.createIndex('date', 'date', { unique: false });
+            }
+          });
         }
 
-        // Record stores (diets, trainings, weights, enrichments, veterinary)
-        const recordStores = ['diets', 'trainings', 'weights', 'enrichments', 'veterinary'];
-        recordStores.forEach(storeName => {
-          if (!database.objectStoreNames.contains(storeName)) {
-            const store = database.createObjectStore(storeName, { keyPath: 'id' });
-            store.createIndex('animal_id', 'animal_id', { unique: false });
-            store.createIndex('date', 'date', { unique: false });
+        // ── V2 Stores (new) ──────────────────────────────────
+        if (oldVersion < 2) {
+          // Photos store
+          if (!database.objectStoreNames.contains('photos')) {
+            const photoStore = database.createObjectStore('photos', { keyPath: 'id' });
+            photoStore.createIndex('animal_id', 'animal_id', { unique: false });
+            photoStore.createIndex('is_primary', 'is_primary', { unique: false });
           }
-        });
+
+          // Favorites store
+          if (!database.objectStoreNames.contains('favorites')) {
+            database.createObjectStore('favorites', { keyPath: 'animal_id' });
+          }
+
+          // Alerts store
+          if (!database.objectStoreNames.contains('alerts')) {
+            const alertStore = database.createObjectStore('alerts', { keyPath: 'id' });
+            alertStore.createIndex('animal_id', 'animal_id', { unique: false });
+            alertStore.createIndex('type', 'type', { unique: false });
+            alertStore.createIndex('status', 'status', { unique: false });
+          }
+
+          // Attachments store
+          if (!database.objectStoreNames.contains('attachments')) {
+            const attachStore = database.createObjectStore('attachments', { keyPath: 'id' });
+            attachStore.createIndex('record_id', 'record_id', { unique: false });
+            attachStore.createIndex('animal_id', 'animal_id', { unique: false });
+          }
+
+          // Users store (future)
+          if (!database.objectStoreNames.contains('users')) {
+            const userStore = database.createObjectStore('users', { keyPath: 'id' });
+            userStore.createIndex('username', 'username', { unique: true });
+            userStore.createIndex('role', 'role', { unique: false });
+          }
+        }
       };
 
       request.onsuccess = (event) => {
@@ -289,6 +330,68 @@ App.DB = (() => {
   const EnrichmentService = createRecordService('enrichments');
   const VeterinaryService = createRecordService('veterinary');
 
+  // ── Photo Service ─────────────────────────────────────────
+  const PhotoService = {
+    getByAnimal: (animalId) => getByIndex('photos', 'animal_id', animalId),
+    getPrimary: async (animalId) => {
+      const photos = await getByIndex('photos', 'animal_id', animalId);
+      return photos.find(p => p.is_primary) || photos[0] || null;
+    },
+    create: (data) => add('photos', data),
+    update: (data) => update('photos', data),
+    remove: (id) => remove('photos', id),
+    getAll: () => getAll('photos'),
+  };
+
+  // ── Favorite Service ──────────────────────────────────────
+  const FavoriteService = {
+    isFavorite: async (animalId) => {
+      const result = await get('favorites', animalId);
+      return !!result;
+    },
+    toggle: async (animalId) => {
+      const exists = await get('favorites', animalId);
+      if (exists) {
+        await remove('favorites', animalId);
+        return false;
+      } else {
+        await add('favorites', { animal_id: animalId, id: animalId, added_at: new Date().toISOString() });
+        return true;
+      }
+    },
+    getAll: () => getAll('favorites'),
+    remove: (animalId) => remove('favorites', animalId),
+  };
+
+  // ── Alert Service ─────────────────────────────────────────
+  const AlertService = {
+    getAll: () => getAll('alerts'),
+    getActive: async () => {
+      const all = await getAll('alerts');
+      return all.filter(a => a.status === 'active');
+    },
+    getByAnimal: (animalId) => getByIndex('alerts', 'animal_id', animalId),
+    create: (data) => add('alerts', data),
+    dismiss: async (id) => {
+      const alert = await get('alerts', id);
+      if (alert) {
+        alert.status = 'dismissed';
+        return update('alerts', alert);
+      }
+    },
+    clear: () => clear('alerts'),
+    remove: (id) => remove('alerts', id),
+  };
+
+  // ── Attachment Service ────────────────────────────────────
+  const AttachmentService = {
+    getByRecord: (recordId) => getByIndex('attachments', 'record_id', recordId),
+    getByAnimal: (animalId) => getByIndex('attachments', 'animal_id', animalId),
+    create: (data) => add('attachments', data),
+    remove: (id) => remove('attachments', id),
+    getAll: () => getAll('attachments'),
+  };
+
   /**
    * Get the appropriate service for a record type.
    */
@@ -300,6 +403,10 @@ App.DB = (() => {
       enrichments: EnrichmentService,
       veterinary: VeterinaryService,
       animals: AnimalService,
+      photos: PhotoService,
+      favorites: FavoriteService,
+      alerts: AlertService,
+      attachments: AttachmentService,
     };
     return map[type];
   }
@@ -325,6 +432,10 @@ App.DB = (() => {
     WeightService,
     EnrichmentService,
     VeterinaryService,
+    PhotoService,
+    FavoriteService,
+    AlertService,
+    AttachmentService,
     getService,
   };
 })();
