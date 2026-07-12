@@ -715,12 +715,12 @@ App.Views = (() => {
   // ═══════════════════════════════════════════════════════════════
 
   const LEONES_DIET_COLS = [
-    { key: 'arenque_grande', label: 'Ag', title: 'Arenque Grande' },
-    { key: 'capelin', label: 'Cp', title: 'Capelín' },
-    { key: 'arenque_pequeno', label: 'AP', title: 'Arenque Pequeño' },
-    { key: 'sprat', label: 'SP', title: 'Sprat' },
-    { key: 'caballa', label: 'Cab', title: 'Caballa' },
-    { key: 'bacaladilla', label: 'Merl', title: 'Bacaladilla' },
+    { key: 'arenque_grande', label: 'A.Grande', title: 'Arenque Grande' },
+    { key: 'capelin', label: 'Capelín', title: 'Capelín' },
+    { key: 'arenque_pequeno', label: 'A.pequeño', title: 'Arenque Pequeño' },
+    { key: 'sprat', label: 'Sprat', title: 'Sprat' },
+    { key: 'caballa', label: 'Caballa', title: 'Caballa' },
+    { key: 'bacaladilla', label: 'Bacaladilla', title: 'Bacaladilla' },
   ];
 
   async function renderLeonesDietTab(container, animal) {
@@ -731,6 +731,23 @@ App.Views = (() => {
     const records = await getDietRecords(animal.id, 100);
     const latest = records.length > 0 ? records[0] : null;
 
+    let calculatedTotal = 0;
+    if (latest) {
+      LEONES_DIET_COLS.forEach(c => {
+        calculatedTotal += parseFloat(latest[c.key]) || 0;
+      });
+      if (latest.alimento) {
+        try {
+          const extras = JSON.parse(latest.alimento);
+          extras.forEach(e => {
+            calculatedTotal += parseFloat(e.kg) || 0;
+          });
+        } catch (e) {
+          calculatedTotal += parseFloat(latest.cantidad_gramos || 0);
+        }
+      }
+    }
+
     // ── Tarjeta Resumen ───────────────────────────────────
     const summaryHtml = latest ? `
       <div class="card leo-diet-summary">
@@ -740,12 +757,12 @@ App.Views = (() => {
         </div>
         <div class="leo-diet-summary-grid">
           <div class="leo-diet-summary-total">
-            <span class="leo-diet-summary-total-value">${(latest.dieta_total / 1000).toFixed(2)} kg</span>
+            <span class="leo-diet-summary-total-value">${parseFloat(calculatedTotal.toFixed(2))} kg</span>
             <span class="leo-diet-summary-total-label">Dieta Total</span>
           </div>
           ${LEONES_DIET_COLS.map(c => `
             <div class="leo-diet-summary-item">
-              <span class="leo-diet-summary-item-value">${parseFloat(latest[c.key] || 0).toFixed(2)}kg</span>
+              <span class="leo-diet-summary-item-value">${parseFloat(parseFloat(latest[c.key] || 0).toFixed(2))}kg</span>
               <span class="leo-diet-summary-item-label" title="${c.title}">${c.label}</span>
             </div>
           `).join('')}
@@ -801,15 +818,44 @@ App.Views = (() => {
                   </tr>
                 </thead>
                 <tbody>
-                  ${records.map(r => {
+                  ${records.map((r, i) => {
+        const prevR = records[i + 1];
         const isToday = r.fecha === todayStr;
+        
+        const getFishVal = (rec, key) => {
+          if (!rec) return 0;
+          let val = rec[key];
+          if (val === undefined && rec.base) {
+            try {
+              const baseParsed = typeof rec.base === 'string' ? JSON.parse(rec.base) : rec.base;
+              val = baseParsed[key];
+            } catch(e) {}
+          }
+          return parseFloat(val) || 0;
+        };
+
         let extrasHtml = '';
         if (r.alimento) {
           try {
             const extras = JSON.parse(r.alimento);
-            extrasHtml = extras.map(e => `<b>${H.escapeHtml(e.name)}</b> (${parseFloat(e.kg).toFixed(2)}kg)`).join('<br>');
+            extrasHtml = extras.map(e => {
+              let arrow = '';
+              if (prevR && prevR.alimento) {
+                try {
+                  const prevExtras = JSON.parse(prevR.alimento);
+                  const prevE = prevExtras.find(pe => pe.name === e.name);
+                  const currKg = parseFloat(e.kg) || 0;
+                  const prevKg = prevE ? (parseFloat(prevE.kg) || 0) : 0;
+                  if (currKg > prevKg) arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
+                  else if (currKg < prevKg) arrow = ' <span class="text-red-500" style="color: var(--danger-500, #ef4444); font-size: 0.85em;">▼</span>';
+                } catch(err){}
+              } else if (prevR && !prevR.alimento) {
+                arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
+              }
+              return `<b>${H.escapeHtml(e.name)}</b> (${parseFloat(parseFloat(e.kg).toFixed(2))}kg${arrow})`;
+            }).join('<br>');
           } catch (e) {
-            extrasHtml = `<b>${H.escapeHtml(r.alimento)}</b> (${parseFloat(r.cantidad_gramos || 0).toFixed(2)}kg)`;
+            extrasHtml = `<b>${H.escapeHtml(r.alimento)}</b> (${parseFloat(parseFloat(r.cantidad_gramos || 0).toFixed(2))}kg)`;
           }
           if (extrasHtml) extrasHtml += '<br>';
         }
@@ -817,8 +863,17 @@ App.Views = (() => {
         return `
                       <tr class="${isToday ? 'leo-dt-today' : ''}">
                         <td class="leo-dt-fecha">${H.formatDate(r.fecha)}</td>
-                        <td class="leo-dt-total"><strong>${parseFloat(r.dieta_total || 0).toFixed(2)}</strong></td>
-                        ${LEONES_DIET_COLS.map(c => `<td>${parseFloat(r[c.key] || 0).toFixed(2)}</td>`).join('')}
+                        <td class="leo-dt-total"><strong>${parseFloat(parseFloat(r.dieta_total || 0).toFixed(2))}</strong></td>
+                        ${LEONES_DIET_COLS.map(c => {
+                          const currVal = getFishVal(r, c.key);
+                          const prevVal = prevR ? getFishVal(prevR, c.key) : currVal;
+                          let arrow = '';
+                          if (prevR) {
+                            if (currVal > prevVal) arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
+                            else if (currVal < prevVal) arrow = ' <span class="text-red-500" style="color: var(--danger-500, #ef4444); font-size: 0.85em;">▼</span>';
+                          }
+                          return `<td>${parseFloat(currVal.toFixed(2))}${arrow}</td>`;
+                        }).join('')}
                         <td>${r.vitaminas || '—'}</td>
                         <td class="leo-dt-obs">${extrasHtml}${H.escapeHtml(r.observaciones || '')}</td>
                         <td class="actions-cell">
@@ -1109,7 +1164,7 @@ App.Views = (() => {
     
     const el = document.getElementById('leo-diet-form-total');
     if (el) {
-      el.innerHTML = `Total: <strong>${total.toFixed(2)} kg</strong>`;
+      el.innerHTML = `Total: <strong>${parseFloat(total.toFixed(2))} kg</strong>`;
     }
   }
 
@@ -1539,7 +1594,14 @@ App.Views = (() => {
 
   // ── Weight Tab (with Chart + Stats + Unit Toggle) ─────────
   async function renderWeightTab(container, animal) {
-    const weights = await DB.WeightService.getByAnimal(animal.id);
+    let weights = [];
+    try {
+      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=8');
+      weights = await getRecordsByAnimal('weights', animal.id);
+    } catch (err) {
+      UI.showToast('Error al sincronizar pesos desde la base de datos: ' + err.message, 'error');
+      console.error(err);
+    }
     const columns = H.TABLE_COLUMNS.weights;
     const unit = H.getWeightUnit(animal.id);
 
