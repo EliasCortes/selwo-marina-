@@ -396,6 +396,7 @@ export async function getAllDietRecords(departamentoId = null) {
     caballa: r.caballa,
     bacaladilla: r.bacaladilla,
     vitaminas: r.vitaminas,
+    sesiones: r.sesiones,
     departamento_id: r.departamento_id,
     created_at: r.created_at,
   }));
@@ -486,6 +487,7 @@ export async function createDietRecord(record) {
       observaciones:   record.observaciones || "",
       alimento:        alimentoJson,
       cantidad_gramos: "", // Dejamos vacío, los kg van en el JSON
+      sesiones:        record.sesiones || [],
     })
     .select()
     .single();
@@ -529,6 +531,7 @@ export async function updateDietRecord(recordId, record) {
       observaciones:   record.observaciones || "",
       alimento:        alimentoJson,
       cantidad_gramos: "",
+      sesiones:        record.sesiones || [],
     })
     .eq("id", recordId)
     .select()

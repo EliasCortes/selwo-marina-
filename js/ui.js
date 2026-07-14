@@ -49,19 +49,19 @@ App.UI = (() => {
 
   /**
    * Show a modal dialog.
-   * @param {Object} options - { title, contentHtml, onSave, saveLabel, showFooter }
+   * @param {Object} options - { title, contentHtml, onSave, saveLabel, showFooter, modalClass }
    */
   function showModal(options) {
     closeModal(); // Close any existing modal
 
-    const { title, contentHtml, onSave, saveLabel = 'Guardar', showFooter = true } = options;
+    const { title, contentHtml, onSave, saveLabel = 'Guardar', showFooter = true, modalClass = '' } = options;
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'modal-overlay';
 
     overlay.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal ${modalClass}" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h3>${H.escapeHtml(title)}</h3>
           <button class="modal-close" id="modal-close-btn" aria-label="Cerrar">&times;</button>
@@ -433,14 +433,119 @@ App.UI = (() => {
   }
 
   // ── Data Table Renderer ───────────────────────────────────
+
+  const ABBREVIATIONS = {
+    arenque_grande: 'AG',
+    arenque_pequeno: 'AP',
+    sprat: 'Sp',
+    capelin: 'Cp',
+    caballa: 'Cab',
+    bacaladilla: 'Bac'
+  };
+
+  /**
+   * Format a food_type value for display.
+   * Handles JSON strings like '{"arenque_grande":0.5,"sprat":0.2}'
+   * and returns friendly abbreviations like "AG, Sp".
+   */
+  function formatFoodType(value) {
+    if (!value || value === '—') return '<span class="text-empty">Sin alimento</span>';
+
+    try {
+      let parsed = JSON.parse(value);
+      
+      // If it's an array of objects (like the extra_foods array)
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) return '<span class="text-empty">Sin alimento</span>';
+        return parsed.map(item => {
+          const name = (item.name || item.nombre || '').toLowerCase().replace(/ /g, '_');
+          return ABBREVIATIONS[name] || H.capitalize(H.escapeHtml(item.name || item.nombre || 'Desconocido'));
+        }).join(', ');
+      }
+
+      // If it's an object {"arenque_grande": 0.5, "sprat": 0.2}
+      if (parsed && typeof parsed === 'object') {
+        const types = [];
+        for (const [key, amount] of Object.entries(parsed)) {
+          if (amount && parseFloat(amount) > 0) {
+            types.push(ABBREVIATIONS[key] || H.capitalize(key.replace(/_/g, ' ')));
+          }
+        }
+        if (types.length > 0) return types.join(', ');
+      }
+    } catch (e) {
+      // Not JSON — return as-is text
+    }
+
+    // Plain text value
+    const trimmed = value.trim();
+    if (!trimmed) return '<span class="text-empty">Sin alimento</span>';
+    return H.escapeHtml(trimmed);
+  }
+
+  function calculateFoodTotal(value) {
+    if (!value || value === '—') return 0;
+    try {
+      let parsed = JSON.parse(value);
+      let total = 0;
+      if (Array.isArray(parsed)) {
+        parsed.forEach(item => { total += parseFloat(item.kg || item.cantidad || 0); });
+      } else if (parsed && typeof parsed === 'object') {
+        for (const amount of Object.values(parsed)) {
+          total += parseFloat(amount || 0);
+        }
+      }
+      return total;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  /**
+   * Format a cell value, handling empty/dash values gracefully.
+   */
+  function formatCellValue(value, col, record) {
+    if (col.format) return col.format(value);
+
+    // Special handling for food_type column
+    if (col.key === 'food_type' || col.key === 'alimento') {
+      return formatFoodType(value);
+    }
+
+    // Special handling for quantity column - compute from JSON
+    if (col.key === 'quantity' || col.key === 'cantidad_gramos') {
+      const foodValue = record.food_type || record.alimento;
+      const total = calculateFoodTotal(foodValue);
+      if (total > 0) {
+        return `${total.toFixed(2).replace(/\.00$/, '')} kg`;
+      }
+    }
+
+    if (col.truncate) {
+      const text = H.escapeHtml(value || '');
+      if (!text || text === '—') return '<span class="text-empty">Sin observaciones</span>';
+      return H.truncate(text, col.truncate);
+    }
+
+    const text = value || '';
+    if (!text || text === '—') {
+      // Contextual empty text
+      if (col.key === 'observations') return '<span class="text-empty">Sin observaciones</span>';
+      if (col.key === 'quantity' || col.key === 'cantidad_gramos') return '<span class="text-empty">—</span>';
+      return '<span class="text-empty">—</span>';
+    }
+
+    return H.escapeHtml(text);
+  }
+
   /**
    * Render a data table with action buttons.
    * @param {Array} records - Data records
    * @param {Array} columns - Column definitions from Helpers.TABLE_COLUMNS
-   * @param {Object} options - { onEdit, onDelete, type, animalId }
+   * @param {Object} options - { onEdit, onDelete, type, animalId, showAnimalName, animalMap, deptId }
    */
   function renderTable(records, columns, options = {}) {
-    const { type, animalId, showAnimalName = false, animalMap = {} } = options;
+    const { type, animalId, showAnimalName = false, animalMap = {}, deptId = '' } = options;
 
     if (!records || records.length === 0) {
       return `
@@ -458,13 +563,13 @@ App.UI = (() => {
       return 0;
     });
 
-    let html = '<div class="table-container"><table class="table">';
+    let html = '<div class="table-container"><table class="table table-enhanced">';
 
     // Header
     html += '<thead><tr>';
-    if (showAnimalName) html += '<th>Animal</th>';
+    if (showAnimalName) html += '<th class="col-animal">Animal</th>';
     columns.forEach(col => {
-      html += `<th>${H.escapeHtml(col.label)}</th>`;
+      html += `<th class="col-${col.key}">${H.escapeHtml(col.label)}</th>`;
     });
     html += '<th style="text-align:right">Acciones</th>';
     html += '</tr></thead>';
@@ -475,18 +580,31 @@ App.UI = (() => {
       html += '<tr>';
       if (showAnimalName) {
         const aName = animalMap[record.animal_id] || '—';
-        html += `<td><strong>${H.escapeHtml(aName)}</strong></td>`;
+        if (aName !== '—' && record.animal_id) {
+          // Clickable animal name → navigate to that animal's diet tab
+          html += `<td class="col-animal"><a href="#/animal/${record.animal_id}/diets" class="animal-link" title="Ver dietas de ${H.escapeHtml(aName)}">${H.escapeHtml(aName)}</a></td>`;
+        } else {
+          html += `<td class="col-animal"><span class="text-empty">—</span></td>`;
+        }
       }
       columns.forEach(col => {
-        let value = record[col.key];
-        if (col.format) value = col.format(value);
-        else if (col.truncate) value = H.truncate(H.escapeHtml(value || ''), col.truncate);
-        else value = H.escapeHtml(value || '—');
-        html += `<td>${value}</td>`;
+        html += `<td class="col-${col.key}">${formatCellValue(record[col.key], col, record)}</td>`;
       });
       html += `<td class="actions-cell">`;
-      html += `<button class="btn btn-ghost btn-icon" onclick="App.Views.openRecordForm('${type}', '${record.animal_id}', '${record.id}')" title="Editar">✏️</button>`;
-      html += `<button class="btn btn-ghost btn-icon" onclick="App.Views.deleteRecord('${type}', '${record.id}')" title="Eliminar">🗑️</button>`;
+      html += `<button class="btn-action btn-action-edit" onclick="App.Views.openRecordForm('${type}', '${record.animal_id}', '${record.id}')" title="Editar registro">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>`;
+      html += `<button class="btn-action btn-action-delete" onclick="App.Views.deleteRecord('${type}', '${record.id}')" title="Eliminar registro">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          <line x1="10" y1="11" x2="10" y2="17"/>
+          <line x1="14" y1="11" x2="14" y2="17"/>
+        </svg>
+      </button>`;
       html += `</td>`;
       html += '</tr>';
     });

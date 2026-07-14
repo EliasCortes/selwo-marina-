@@ -178,7 +178,7 @@ App.Helpers = (() => {
     { id: 'aves', name: 'Aves', icon: '🦜', cssClass: 'aves', gradient: 'linear-gradient(135deg, rgba(239,68,68,0.25), rgba(245,158,11,0.18))' },
     { id: 'pinguinario', name: 'Pingüinario', icon: '🐧', cssClass: 'pinguinario', gradient: 'linear-gradient(135deg, rgba(147,197,253,0.2), rgba(96,165,250,0.15))' },
     { id: 'amazonia', name: 'Amazonia', icon: '🐍', cssClass: 'amazonia', gradient: 'linear-gradient(135deg, rgba(52,211,153,0.2), rgba(16,185,129,0.15))' },
-    { id: 'leones', name: 'Leones Marinos', icon: '🦭', cssClass: 'leones', gradient: 'linear-gradient(135deg, rgba(0,180,216,0.2), rgba(0,119,182,0.15))' },
+    { id: 'leones', name: 'Mamíferos Marinos', icon: '🦭', cssClass: 'leones', gradient: 'linear-gradient(135deg, rgba(0,180,216,0.2), rgba(0,119,182,0.15))' },
   ];
 
   function getDeptMeta(deptId) {

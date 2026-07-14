@@ -419,7 +419,7 @@ App.Views = (() => {
         </div>
         <div class="card">
           <div class="card-body">
-            ${UI.renderTable(records, columns, { type: sectionId, showAnimalName: true, animalMap })}
+            ${UI.renderTable(records, columns, { type: sectionId, showAnimalName: true, animalMap, deptId })}
           </div>
         </div>
       </main>
@@ -862,7 +862,10 @@ App.Views = (() => {
 
         return `
                       <tr class="${isToday ? 'leo-dt-today' : ''}">
-                        <td class="leo-dt-fecha">${H.formatDate(r.fecha)}</td>
+                        <td class="leo-dt-fecha">
+                          <button class="session-toggle-btn" onclick="this.classList.toggle('expanded'); this.closest('tr').nextElementSibling.style.display = this.classList.contains('expanded') ? 'table-row' : 'none';" title="Ver desglose">▶</button>
+                          ${H.formatDate(r.fecha)}
+                        </td>
                         <td class="leo-dt-total"><strong>${parseFloat(parseFloat(r.dieta_total || 0).toFixed(2))}</strong></td>
                         ${LEONES_DIET_COLS.map(c => {
                           const currVal = getFishVal(r, c.key);
@@ -879,6 +882,36 @@ App.Views = (() => {
                         <td class="actions-cell">
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.openLeonesDietForm('${animal.id}', '${animal.department}', '${r.id}')" title="Editar">✏️</button>
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteRecord('diets', '${r.id}')" title="Eliminar">🗑️</button>
+                        </td>
+                      </tr>
+                      <tr class="leo-dt-session-breakdown" style="display:none;">
+                        <td colspan="10">
+                          <div class="leo-dt-session-breakdown-inner">
+                            ${r.sesiones && r.sesiones.length > 0 ? `
+                              <table class="leo-dt-session-table">
+                                <thead>
+                                  <tr>
+                                    <th>Sesión</th>
+                                    ${LEONES_DIET_COLS.map(c => `<th>${c.label}</th>`).join('')}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  ${ (() => {
+                                    let sArr = [];
+                                    if (r.sesiones) {
+                                      sArr = typeof r.sesiones === 'string' ? JSON.parse(r.sesiones) : r.sesiones;
+                                    }
+                                    return (Array.isArray(sArr) ? sArr : []).map(s => `
+                                      <tr>
+                                        <td style="font-weight: 500;">${H.escapeHtml(s.nombre || '')}</td>
+                                        ${LEONES_DIET_COLS.map(c => `<td>${s[c.key] ? parseFloat(s[c.key]).toFixed(2) : '-'}</td>`).join('')}
+                                      </tr>
+                                    `).join('');
+                                  })() }
+                                </tbody>
+                              </table>
+                            ` : '<p class="text-muted" style="margin:0; font-size: 0.85rem;">Sin desglose de sesiones guardado.</p>'}
+                          </div>
                         </td>
                       </tr>
                     `;
@@ -959,8 +992,31 @@ App.Views = (() => {
       return;
     }
 
-    const labels = records.map(r => H.formatDate(r.fecha));
-    const data = records.map(r => parseFloat(r.dieta_total) || 0);
+    let labels = [];
+    let data = [];
+
+    if (rangeDays === 0) {
+      // "Todo" mode: just use existing data points
+      labels = records.map(r => H.formatDate(r.fecha));
+      data = records.map(r => parseFloat(r.dieta_total) || 0);
+    } else {
+      // Range modes: explicitly create a label for every day in the range
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - rangeDays);
+      
+      const dateMap = {};
+      records.forEach(r => { dateMap[r.fecha] = parseFloat(r.dieta_total) || 0; });
+
+      const curr = new Date(start);
+      while (curr <= end) {
+        const dStr = curr.toISOString().split('T')[0];
+        labels.push(H.formatDate(dStr));
+        // Use null for days without data to show an accurate timeline
+        data.push(dateMap[dStr] !== undefined ? dateMap[dStr] : null);
+        curr.setDate(curr.getDate() + 1);
+      }
+    }
 
     leonesDietChart = new Chart(ctx, {
       type: 'line',
@@ -979,6 +1035,7 @@ App.Views = (() => {
           pointHoverRadius: 6,
           tension: 0.3,
           fill: true,
+          spanGaps: true, // Conecta los puntos aunque haya días sin registro
         }],
       },
       options: {
@@ -1013,6 +1070,7 @@ App.Views = (() => {
     const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=8');
 
     App.Views.currentDietExtras = [];
+    App.Views.currentDietSessions = [];
     let defaults = {};
     let isEdit = false;
 
@@ -1020,15 +1078,16 @@ App.Views = (() => {
       const prev = await getLatestDietRecord(animalId);
       if (prev) {
         defaults = {
-          arenque_grande: prev.arenque_grande || 0,
-          capelin: prev.capelin || 0,
-          arenque_pequeno: prev.arenque_pequeno || 0,
-          sprat: prev.sprat || 0,
-          caballa: prev.caballa || 0,
-          bacaladilla: prev.bacaladilla || 0,
           vitaminas: prev.vitaminas || '',
           observaciones: '',
         };
+        if (prev.sesiones && prev.sesiones.length > 0) {
+          App.Views.currentDietSessions = typeof prev.sesiones === 'string' ? JSON.parse(prev.sesiones) : prev.sesiones;
+        } else {
+          let s = { nombre: 'Sesión 1' };
+          LEONES_DIET_COLS.forEach(c => s[c.key] = prev[c.key] || 0);
+          App.Views.currentDietSessions.push(s);
+        }
         if (prev.alimento) {
           try {
             App.Views.currentDietExtras = JSON.parse(prev.alimento);
@@ -1043,15 +1102,16 @@ App.Views = (() => {
       if (prev) {
         defaults = {
           fecha: prev.fecha,
-          arenque_grande: prev.arenque_grande || 0,
-          capelin: prev.capelin || 0,
-          arenque_pequeno: prev.arenque_pequeno || 0,
-          sprat: prev.sprat || 0,
-          caballa: prev.caballa || 0,
-          bacaladilla: prev.bacaladilla || 0,
           vitaminas: prev.vitaminas || '',
           observaciones: prev.observaciones || '',
         };
+        if (prev.sesiones && prev.sesiones.length > 0) {
+          App.Views.currentDietSessions = typeof prev.sesiones === 'string' ? JSON.parse(prev.sesiones) : prev.sesiones;
+        } else {
+          let s = { nombre: 'Sesión 1' };
+          LEONES_DIET_COLS.forEach(c => s[c.key] = prev[c.key] || 0);
+          App.Views.currentDietSessions.push(s);
+        }
         if (prev.alimento) {
           try {
             App.Views.currentDietExtras = JSON.parse(prev.alimento);
@@ -1062,23 +1122,49 @@ App.Views = (() => {
       }
     }
 
+    if (App.Views.currentDietSessions.length === 0) {
+        App.Views.currentDietSessions = [{ nombre: 'Sesión 1' }, { nombre: 'Sesión 2' }, { nombre: 'Sesión 3' }];
+    }
+
     const todayStr = defaults.fecha || H.today();
 
     const formHtml = `
       <form id="record-form" novalidate>
         <div class="form-group">
           <label class="form-label" for="leo-diet-fecha">Fecha *</label>
-          <input class="form-input" type="date" id="leo-diet-fecha" value="${todayStr}" required ${isEdit ? 'readonly' : ''}>
+          <input class="form-input" type="date" id="leo-diet-fecha" value="${todayStr}" required>
         </div>
-        <div class="leo-diet-form-grid">
-          ${LEONES_DIET_COLS.map(c => `
-            <div class="form-group">
-              <label class="form-label" for="leo-diet-${c.key}">${c.title} (kg)</label>
-              <input class="form-input" type="number" id="leo-diet-${c.key}" value="${defaults[c.key] || 0}" min="0" step="0.01"
-                oninput="App.Views.updateLeonesDietTotal()">
-            </div>
-          `).join('')}
+        
+        <div style="margin-bottom: var(--sp-4);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2);">
+            <label class="form-label" style="margin: 0;">Desglose por Sesiones (kg)</label>
+            <button type="button" class="btn btn-outline btn-sm" onclick="App.Views.addLeoDietSession()">+ Añadir Sesión</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="leo-diet-sessions-form">
+              <thead>
+                <tr>
+                  <th>Sesión</th>
+                  ${LEONES_DIET_COLS.map(c => `<th title="${c.title}">${c.label}</th>`).join('')}
+                  <th>Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="leo-diet-sessions-tbody">
+                <!-- Renderizado por renderLeoDietSessions -->
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style="font-weight: bold; text-align: right;">TOTAL:</td>
+                  ${LEONES_DIET_COLS.map(c => `<td id="leo-diet-total-${c.key}" class="row-total" style="background:transparent; border-bottom:none;">0</td>`).join('')}
+                  <td id="leo-diet-form-total" style="font-weight: bold; background: var(--primary-50); border-radius: var(--radius-md);">0 kg</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
+
         <div style="margin: var(--sp-4) 0; padding: var(--sp-4); border: 1px dashed var(--gray-300); border-radius: var(--radius-md);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3);">
             <h4 style="margin: 0; color: var(--gray-600); font-size: 0.9rem;">Alimentos Personalizados</h4>
@@ -1088,9 +1174,7 @@ App.Views = (() => {
             <!-- Renderizado dinámicamente por JS -->
           </div>
         </div>
-        <div class="leo-diet-form-total" id="leo-diet-form-total">
-          Total: <strong>0 kg</strong>
-        </div>
+
         <div class="form-group">
           <label class="form-label" for="leo-diet-vitaminas">Vitaminas</label>
           <select class="form-select" id="leo-diet-vitaminas">
@@ -1110,6 +1194,7 @@ App.Views = (() => {
       title: isEdit ? '✏️ Editar Dieta' : (copyPrevious ? '📋 Copiar Dieta Anterior' : '+ Registrar Dieta del Día'),
       contentHtml: formHtml,
       saveLabel: isEdit ? 'Actualizar Registro' : 'Guardar Registro',
+      modalClass: 'modal-xl',
       onSave: async () => {
         const fecha = document.getElementById('leo-diet-fecha')?.value;
         if (!fecha) { UI.showToast('La fecha es obligatoria', 'error'); return; }
@@ -1121,10 +1206,13 @@ App.Views = (() => {
           vitaminas: document.getElementById('leo-diet-vitaminas')?.value || '',
           observaciones: document.getElementById('leo-diet-obs')?.value || '',
           extra_foods: App.Views.currentDietExtras,
+          sesiones: App.Views.currentDietSessions,
         };
 
         LEONES_DIET_COLS.forEach(c => {
-          record[c.key] = parseFloat(document.getElementById(`leo-diet-${c.key}`)?.value) || 0;
+          record[c.key] = Array.isArray(App.Views.currentDietSessions) 
+            ? App.Views.currentDietSessions.reduce((sum, s) => sum + (parseFloat(s[c.key]) || 0), 0)
+            : 0;
         });
 
         try {
@@ -1139,7 +1227,7 @@ App.Views = (() => {
           App.Router.resolve();
         } catch (err) {
           if (err.message?.includes('duplicate') || err.code === '23505') {
-            UI.showToast('Ya existe un registro para esa fecha. Cambia la fecha.', 'error');
+            UI.showToast('Ya existe una dieta registrada para este animal en la fecha seleccionada. Por favor, edita la dieta existente o elige otra fecha.', 'error');
           } else {
             UI.showToast('Error: ' + err.message, 'error');
           }
@@ -1147,24 +1235,87 @@ App.Views = (() => {
       },
     });
 
+    App.Views.renderLeoDietSessions();
     App.Views.renderLeoDietExtras();
     App.Views.updateLeonesDietTotal();
   }
 
   function updateLeonesDietTotal() {
-    let total = 0;
+    let grandTotal = 0;
+    
     LEONES_DIET_COLS.forEach(c => {
-      total += parseFloat(document.getElementById(`leo-diet-${c.key}`)?.value) || 0;
+      let colTotal = 0;
+      if (Array.isArray(App.Views.currentDietSessions)) {
+        colTotal = App.Views.currentDietSessions.reduce((sum, s) => sum + (parseFloat(s[c.key]) || 0), 0);
+      }
+      grandTotal += colTotal;
+      const colEl = document.getElementById(`leo-diet-total-${c.key}`);
+      if (colEl) colEl.textContent = parseFloat(colTotal.toFixed(2));
     });
     
-    // Sumar extras dinámicos
-    if (App.Views.currentDietExtras) {
-      total += App.Views.currentDietExtras.reduce((sum, extra) => sum + (parseFloat(extra.kg) || 0), 0);
+    if (Array.isArray(App.Views.currentDietExtras)) {
+      grandTotal += App.Views.currentDietExtras.reduce((sum, extra) => sum + (parseFloat(extra.kg) || 0), 0);
     }
     
     const el = document.getElementById('leo-diet-form-total');
     if (el) {
-      el.innerHTML = `Total: <strong>${parseFloat(total.toFixed(2))} kg</strong>`;
+      el.textContent = `${parseFloat(grandTotal.toFixed(2))} kg`;
+    }
+  }
+
+  function renderLeoDietSessions() {
+    const tbody = document.getElementById('leo-diet-sessions-tbody');
+    if (!tbody) return;
+
+    if (!App.Views.currentDietSessions || App.Views.currentDietSessions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">No hay sesiones</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = (Array.isArray(App.Views.currentDietSessions) ? App.Views.currentDietSessions : []).map((session, index) => {
+      let subtotal = 0;
+      LEONES_DIET_COLS.forEach(c => subtotal += (parseFloat(session[c.key]) || 0));
+      
+      return `
+        <tr>
+          <td>
+            <input class="form-input" style="min-width: 90px;" type="text" value="${H.escapeHtml(session.nombre || '')}" 
+              onchange="App.Views.updateLeoDietSession(${index}, 'nombre', this.value)">
+          </td>
+          ${LEONES_DIET_COLS.map(c => `
+            <td>
+              <input class="form-input" type="number" value="${session[c.key] != null ? session[c.key] : ''}" min="0" step="0.01"
+                onchange="App.Views.updateLeoDietSession(${index}, '${c.key}', this.value)">
+            </td>
+          `).join('')}
+          <td class="row-total">${parseFloat(subtotal.toFixed(2))}</td>
+          <td>
+            <button type="button" class="btn btn-ghost btn-icon" style="color:var(--danger-500); width:28px; height:28px;" onclick="App.Views.removeLeoDietSession(${index})" title="Eliminar sesión">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    App.Views.updateLeonesDietTotal();
+  }
+
+  function addLeoDietSession() {
+    const num = (App.Views.currentDietSessions || []).length + 1;
+    App.Views.currentDietSessions.push({ nombre: `Sesión ${num}` });
+    App.Views.renderLeoDietSessions();
+  }
+
+  function updateLeoDietSession(index, key, value) {
+    if (App.Views.currentDietSessions && App.Views.currentDietSessions[index]) {
+      App.Views.currentDietSessions[index][key] = key === 'nombre' ? value : (parseFloat(value) || 0);
+      App.Views.renderLeoDietSessions();
+    }
+  }
+
+  function removeLeoDietSession(index) {
+    if (App.Views.currentDietSessions) {
+      App.Views.currentDietSessions.splice(index, 1);
+      App.Views.renderLeoDietSessions();
     }
   }
 
@@ -1779,24 +1930,39 @@ App.Views = (() => {
   }
 
   async function deleteRecord(type, recordId) {
+    const section = H.getSectionMeta(type);
+
     // Validar UUID antes de intentar borrar en Supabase
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID_RE.test(recordId)) {
-      UI.showToast(
-        `No se puede eliminar: el ID "${recordId}" es un registro local/mock, no existe en Supabase.`,
-        'error'
+    const isLocalMock = !UUID_RE.test(recordId);
+
+    if (isLocalMock) {
+      UI.showConfirm(
+        `Este es un registro local/prueba de ${section.name}. ¿Deseas eliminarlo de tu dispositivo?`,
+        async () => {
+          try {
+            await DB.remove(type, recordId);
+            UI.showToast('Registro local eliminado correctamente', 'success');
+            App.Router.resolve();
+          } catch (err) {
+            UI.showToast('Error al eliminar localmente: ' + err.message, 'error');
+          }
+        },
+        `Eliminar ${section.name} (Local)`
       );
       return;
     }
 
     const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=8');
-    const section = H.getSectionMeta(type);
     UI.showConfirm(
-      `¿Estás seguro de eliminar este registro de ${section.name}?`,
+      `¿Estás seguro de eliminar este registro de ${section.name} en Supabase?`,
       async () => {
         try {
           await deleteSupabaseRecord(type, recordId);
-          UI.showToast('Registro eliminado', 'success');
+          // También limpiamos localmente por si estuviera cacheado
+          try { await DB.remove(type, recordId); } catch(e) {}
+          
+          UI.showToast('Registro eliminado de Supabase', 'success');
           App.Router.resolve();
         } catch (err) {
           UI.showToast('Error al eliminar: ' + err.message, 'error');
@@ -2068,11 +2234,16 @@ App.Views = (() => {
     saveDailyDiet,
     openLeonesDietForm,
     updateLeonesDietTotal,
+    renderLeoDietSessions,
+    addLeoDietSession,
+    updateLeoDietSession,
+    removeLeoDietSession,
     renderLeoDietExtras,
     addLeoDietExtra,
     updateLeoDietExtra,
     removeLeoDietExtra,
     previewPhoto,
     currentDietExtras: [],
+    currentDietSessions: [],
   };
 })();

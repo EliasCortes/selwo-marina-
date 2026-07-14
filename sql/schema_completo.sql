@@ -47,6 +47,7 @@ CREATE TABLE diet_records (
   caballa         NUMERIC DEFAULT 0,
   bacaladilla     NUMERIC DEFAULT 0,
   vitaminas       TEXT,
+  sesiones        JSONB DEFAULT '[]'::jsonb,
   created_at      TIMESTAMPTZ DEFAULT now()
 );
 
