@@ -358,11 +358,11 @@ App.Views = (() => {
           </div>
           <div class="animal-info">
             <div class="animal-name">${H.escapeHtml(animal.name)} ${isFav ? '<span class="fav-star active">★</span>' : ''}</div>
+            <div class="text-sm text-slate-500 mb-1">ZIMS ID: ${H.escapeHtml(animal.zims_id || '—')}</div>
             <div class="animal-species">${H.escapeHtml(animal.species)}</div>
             <div class="animal-meta">
               ${H.getSexBadge(animal.sex)}
               ${H.getStatusBadge(animal.status)}
-              <span class="animal-zims">${H.escapeHtml(animal.zims_id)}</span>
             </div>
           </div>
         </div>
@@ -598,11 +598,11 @@ App.Views = (() => {
                 ${isFav ? '★' : '☆'}
               </button>
             </div>
+            <div class="text-sm text-slate-500 mb-1">ZIMS ID: ${H.escapeHtml(animal.zims_id || '—')}</div>
             <div class="animal-profile-species">${H.escapeHtml(animal.species)}</div>
             <div class="animal-profile-badges">
               ${H.getSexBadge(animal.sex)}
               ${H.getStatusBadge(animal.status)}
-              <span class="badge" style="background:var(--gray-100);color:var(--gray-700);">${H.escapeHtml(animal.zims_id)}</span>
             </div>
           </div>
         </div>
