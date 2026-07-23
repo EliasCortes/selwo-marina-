@@ -416,7 +416,7 @@ App.Views = (() => {
       <main class="main-content">
         <div class="page-header">
           <h2>${section.icon} ${section.name}</h2>
-          <button class="btn btn-primary" onclick="App.Views.openDeptRecordForm('${sectionId}', '${deptId}')">+ Nuevo Registro</button>
+          <button class="btn btn-primary" onclick="${sectionId === 'diets' ? `App.Views.openDietAnimalSelector('${deptId}')` : `App.Views.openDeptRecordForm('${sectionId}', '${deptId}')`} ">+ Nuevo Registro</button>
         </div>
         <div class="card">
           <div class="card-body">
@@ -2382,6 +2382,77 @@ App.Views = (() => {
   }
 
   // ── Dept Record Form (with animal selector) ───────────────
+  
+  async function openDietAnimalSelector(deptId) {
+    // 1. Mostrar estado de carga (Defensa y UX)
+    UI.showModal({
+      title: 'Registrar Dieta — Elegir Animal',
+      contentHtml: `
+        <div style="padding: 2rem; text-align: center;">
+          <div class="loading-spinner" style="margin: 0 auto 1rem;"></div>
+          <p>Cargando animales del departamento...</p>
+        </div>
+      `,
+      saveLabel: 'Cargando...',
+    });
+
+    // 2. Deshabilitar botón de guardar mientras carga
+    const modalSaveBtn = document.querySelector('.modal-footer .btn-primary');
+    if (modalSaveBtn) modalSaveBtn.disabled = true;
+
+    try {
+      const { getAnimals } = await import('../src/services/animalService.js?v=8');
+      const animalsResult = await getAnimals({ departamentoId: deptId });
+      const animals = animalsResult?.data || [];
+
+      // Si no hay animales en este departamento
+      if (animals.length === 0) {
+        UI.showModal({
+          title: 'Registrar Dieta — Elegir Animal',
+          contentHtml: '<p style="padding:1rem;">No hay animales registrados en este departamento.</p>',
+          saveLabel: 'Cerrar',
+          onSave: () => UI.closeModal()
+        });
+        return;
+      }
+
+      // 3. Renderizar el selector real
+      const animalSelectHtml = `
+        <div class="form-group" style="margin-top: 1rem;">
+          <label class="form-label" for="diet-animal-selector">Selecciona un Animal para su Dieta</label>
+          <select class="form-select" id="diet-animal-selector" style="font-size: 1.1rem; padding: 0.5rem;">
+            <option value="">Seleccionar animal...</option>
+            ${animals.map(a => `<option value="${a.id}">${H.escapeHtml(a.nombre || '')} — ${H.escapeHtml(a.especie || '')}</option>`).join('')}
+          </select>
+        </div>
+      `;
+
+      UI.showModal({
+        title: 'Registrar Dieta — Elegir Animal',
+        contentHtml: animalSelectHtml,
+        saveLabel: 'Continuar',
+        onSave: () => {
+          const sel = document.getElementById('diet-animal-selector');
+          if (!sel || !sel.value) {
+            if (sel) sel.style.borderColor = 'var(--danger-500)';
+            return;
+          }
+          UI.closeModal();
+          // Encadenamiento opcional defensivo al enrutador
+          App.Router?.navigate?.(`/animal/${sel.value}/diets`);
+        }
+      });
+    } catch (err) {
+      console.error('Error en openDietAnimalSelector:', err);
+      UI.showModal({
+        title: 'Error',
+        contentHtml: `<p style="padding:1rem; color:var(--danger-500);">Error al cargar animales: ${err.message}</p>`,
+        saveLabel: 'Cerrar',
+        onSave: () => UI.closeModal()
+      });
+    }
+  }
+
   async function openDeptRecordForm(type, deptId) {
     const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=8');
 
@@ -2527,6 +2598,8 @@ App.Views = (() => {
     updateLeoDietExtra,
     removeLeoDietExtra,
     previewPhoto,
+    openDeptRecordForm,
+    openDietAnimalSelector,
     currentDietExtras: [],
     currentDietSessions: [],
   };
