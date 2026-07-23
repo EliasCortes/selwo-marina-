@@ -59,6 +59,7 @@ CREATE TABLE entrenamientos (
   conducta_entrenada  TEXT,
   resultado           TEXT,
   comentarios         TEXT,
+  numero_sesion       INTEGER DEFAULT 1,
   created_at          TIMESTAMPTZ DEFAULT now()
 );
 

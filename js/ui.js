@@ -440,7 +440,10 @@ App.UI = (() => {
     sprat: 'Sp',
     capelin: 'Cp',
     caballa: 'Cab',
-    bacaladilla: 'Bac'
+    bacaladilla: 'Bac',
+    sardina: 'Srd',
+    merlan: 'Mrl',
+    merluza: 'Mlz'
   };
 
   /**

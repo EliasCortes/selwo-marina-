@@ -176,12 +176,14 @@ const RECORD_CONFIG = {
       behavior:     "conducta_entrenada",
       result:       "resultado",
       observations: "comentarios",
+      numero_sesion: "numero_sesion",
     },
     fromSupabase: {
       fecha:              "date",
       conducta_entrenada: "behavior",
       resultado:          "result",
       comentarios:        "observations",
+      numero_sesion:      "numero_sesion",
     },
   },
   weights: {
@@ -395,6 +397,9 @@ export async function getAllDietRecords(departamentoId = null) {
     sprat: r.sprat,
     caballa: r.caballa,
     bacaladilla: r.bacaladilla,
+    sardina: r.sardina,
+    merlan: r.merlan,
+    merluza: r.merluza,
     vitaminas: r.vitaminas,
     sesiones: r.sesiones,
     departamento_id: r.departamento_id,
@@ -463,6 +468,9 @@ export async function createDietRecord(record) {
     + (parseFloat(record.sprat) || 0)
     + (parseFloat(record.caballa) || 0)
     + (parseFloat(record.bacaladilla) || 0)
+    + (parseFloat(record.sardina) || 0)
+    + (parseFloat(record.merlan) || 0)
+    + (parseFloat(record.merluza) || 0)
     + extrasTotal;
 
   // Serializar a JSON para no alterar el esquema
@@ -483,6 +491,9 @@ export async function createDietRecord(record) {
       sprat:           parseFloat(record.sprat) || 0,
       caballa:         parseFloat(record.caballa) || 0,
       bacaladilla:     parseFloat(record.bacaladilla) || 0,
+      sardina:         parseFloat(record.sardina) || 0,
+      merlan:          parseFloat(record.merlan) || 0,
+      merluza:         parseFloat(record.merluza) || 0,
       vitaminas:       record.vitaminas || "",
       observaciones:   record.observaciones || "",
       alimento:        alimentoJson,
@@ -510,6 +521,9 @@ export async function updateDietRecord(recordId, record) {
     + (parseFloat(record.sprat) || 0)
     + (parseFloat(record.caballa) || 0)
     + (parseFloat(record.bacaladilla) || 0)
+    + (parseFloat(record.sardina) || 0)
+    + (parseFloat(record.merlan) || 0)
+    + (parseFloat(record.merluza) || 0)
     + extrasTotal;
 
   const alimentoJson = record.extra_foods && record.extra_foods.length > 0 
@@ -527,6 +541,9 @@ export async function updateDietRecord(recordId, record) {
       sprat:           parseFloat(record.sprat) || 0,
       caballa:         parseFloat(record.caballa) || 0,
       bacaladilla:     parseFloat(record.bacaladilla) || 0,
+      sardina:         parseFloat(record.sardina) || 0,
+      merlan:          parseFloat(record.merlan) || 0,
+      merluza:         parseFloat(record.merluza) || 0,
       vitaminas:       record.vitaminas || "",
       observaciones:   record.observaciones || "",
       alimento:        alimentoJson,

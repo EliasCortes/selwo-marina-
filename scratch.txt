@@ -1,0 +1,32 @@
+async function renderGlobalTrainingView(params) {
+    const { deptId } = params;
+    const dept = H.getDeptMeta(deptId);
+    const app = document.getElementById('app');
+
+    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=9');
+    
+    let records = [];
+    let animalMap = {};
+    let animalAvatars = {};
+
+    try {
+      records = await getTrainingRecordsByDept(deptId);
+      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      
+      for (const a of (animals || [])) {
+        animalMap[a.id] = a.nombre;
+        animalAvatars[a.id] = a.foto_url || await App.Photos.getPhotoUrl(a.id, a.especie);
+      }
+
+async function openTrainingForm(animalId, deptId, recordId = null) {
+    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=9');
+
+    const isEdit = !!recordId;
+    let defaults = { date: H.today(), result: 'Excelente', behavior: '', observations: '', numero_sesion: 1, animal_id: animalId || '' };
+
+    let animalsList = [];
+    if (!animalId) {
+      try {
+        const { data } = await getAnimals({ departamentoId: deptId });
+        animalsList = data || [];
+      }
