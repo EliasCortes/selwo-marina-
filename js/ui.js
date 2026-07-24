@@ -116,6 +116,124 @@ App.UI = (() => {
     }
   }
 
+  function showObservationModal(text, dateStr = '') {
+    closeModal(); // Close any existing modal
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    // Overlay backdrop styles
+    overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.4)';
+    overlay.style.backdropFilter = 'blur(4px)';
+    overlay.style.webkitBackdropFilter = 'blur(4px)';
+
+    const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>`;
+
+    overlay.innerHTML = `
+      <style>
+        @keyframes customModalIn {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      </style>
+      <div style="
+        background: #ffffff;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        margin: 1rem;
+        animation: customModalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      " role="dialog" aria-modal="true">
+        <!-- Header -->
+        <div style="
+          background-color: var(--primary-700);
+          color: #ffffff;
+          padding: 1rem 1.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        ">
+          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.01em; color: #ffffff;">
+            ${fileIcon}
+            Observaciones${dateStr ? ' - ' + dateStr : ''}
+          </h3>
+          <button id="obs-close-btn" style="
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.2rem;
+            line-height: 1;
+            transition: transform 0.2s;
+            opacity: 0.85;
+          " onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'" onmouseout="this.style.opacity='0.85'; this.style.transform='scale(1)'">&times;</button>
+        </div>
+        
+        <!-- Body -->
+        <div style="
+          padding: 1.25rem 1.5rem;
+          background-color: #ffffff;
+          color: var(--gray-800);
+          max-height: 15rem;
+          overflow-y: auto;
+        ">
+          <p style="margin: 0; white-space: pre-wrap; line-height: 1.6; font-size: 1rem; font-weight: 500; color: var(--gray-800);">${text}</p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="
+          padding: 0.85rem 1.5rem;
+          background-color: #f8fafc;
+          border-top: 1px solid var(--gray-200);
+          display: flex;
+          justify-content: flex-end;
+        ">
+          <button id="obs-footer-btn" style="
+            background-color: var(--primary-600);
+            color: #ffffff;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          " onmouseover="this.style.backgroundColor='var(--primary-700)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.backgroundColor='var(--primary-600)'; this.style.transform='none'">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeModal = overlay;
+
+    const btnClose = overlay.querySelector('#obs-close-btn');
+    const btnFooter = overlay.querySelector('#obs-footer-btn');
+
+    const handleClose = () => closeModal();
+
+    btnClose.addEventListener('click', handleClose);
+    btnFooter.addEventListener('click', handleClose);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) handleClose();
+    });
+
+    // Ensure escape key works (inherited from main modal logic if we managed it, but since we recreate it:)
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        handleClose();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+
   /**
    * Show a confirmation dialog.
    */
@@ -525,9 +643,29 @@ App.UI = (() => {
     }
 
     if (col.truncate) {
-      const text = H.escapeHtml(value || '');
+      const text = value || '';
       if (!text || text === '—') return '<span class="text-empty">Sin observaciones</span>';
-      return H.truncate(text, col.truncate);
+      
+      const escapedText = H.escapeHtml(text);
+      if (text.length > col.truncate) {
+        const truncated = H.escapeHtml(H.truncate(text, col.truncate));
+        const recordDate = record.date || record.fecha || '';
+        const formattedDate = recordDate ? H.formatDate(recordDate) : '';
+        
+        return `
+          <div 
+            title="${escapedText.replace(/"/g, '&quot;')}"
+            class="truncate-clickable"
+            style="cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; color: var(--primary-700);"
+            data-full-text="${escapedText.replace(/"/g, '&quot;')}"
+            data-record-date="${formattedDate}"
+            onclick="event.stopPropagation(); App.UI.showObservationModal(this.getAttribute('data-full-text'), this.getAttribute('data-record-date'))"
+          >
+            ${truncated}
+          </div>
+        `;
+      }
+      return escapedText;
     }
 
     const text = value || '';
@@ -628,5 +766,6 @@ App.UI = (() => {
     renderHeader,
     initHeaderInteractions,
     renderTable,
+    showObservationModal,
   };
 })();

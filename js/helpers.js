@@ -26,6 +26,63 @@ App.Helpers = (() => {
     return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  function formatBirthDateWithAge(dateStr) {
+    if (!dateStr) return '—';
+
+    let d;
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        d = new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+    } else {
+      const parts = dateStr.split('-');
+      if (parts.length >= 3) {
+        d = new Date(parts[0], parts[1] - 1, parts[2].substring(0, 2));
+      } else {
+        d = new Date(dateStr);
+      }
+    }
+
+    if (!d || isNaN(d.getTime())) return '—';
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+
+    const today = new Date();
+    let years = today.getFullYear() - d.getFullYear();
+    let months = today.getMonth() - d.getMonth();
+    let days = today.getDate() - d.getDate();
+
+    if (months < 0 || (months === 0 && days < 0)) {
+      years--;
+      months += 12;
+    }
+
+    if (days < 0) {
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
+      // months could become -1 if we subtracted from 0, but since months was >=0 (or adjusted), 
+      // if months was 0 before, and days < 0, it was already handled by the first if condition, 
+      // where months would become 12, so here months becomes 11, which is correct.
+      // Wait, let's refine this to be foolproof.
+      months--;
+    }
+
+    let ageString = '';
+    if (years > 0) {
+      ageString = `${years} año${years !== 1 ? 's' : ''}`;
+    } else if (months > 0) {
+      ageString = `${months} mes${months !== 1 ? 'es' : ''}`;
+    } else {
+      ageString = `${days} día${days !== 1 ? 's' : ''}`;
+    }
+
+    return `${formattedDate} (${ageString})`;
+  }
+
   function formatDateForInput(isoString) {
     if (!isoString) return '';
     const d = new Date(isoString);
@@ -389,6 +446,7 @@ App.Helpers = (() => {
   return {
     generateId,
     formatDate,
+    formatBirthDateWithAge,
     formatDateForInput,
     formatDateTime,
     today,

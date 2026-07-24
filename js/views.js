@@ -675,7 +675,7 @@ App.Views = (() => {
             <div class="info-item"><div class="info-label">Nombre</div><div class="info-value">${H.escapeHtml(animal.name)}</div></div>
             <div class="info-item"><div class="info-label">Especie</div><div class="info-value">${H.escapeHtml(animal.species)}</div></div>
             <div class="info-item"><div class="info-label">Sexo</div><div class="info-value">${H.getSexBadge(animal.sex)}</div></div>
-            <div class="info-item"><div class="info-label">Fecha de Nacimiento</div><div class="info-value">${animal.birth_date ? H.escapeHtml(animal.birth_date) : '—'}</div></div>
+            <div class="info-item"><div class="info-label">Fecha de Nacimiento</div><div class="info-value">${H.formatBirthDateWithAge(animal.birth_date)}</div></div>
             <div class="info-item"><div class="info-label">ZIMS ID</div><div class="info-value" style="font-family:monospace;">${H.escapeHtml(animal.zims_id)}</div></div>
             <div class="info-item"><div class="info-label">Microchip</div><div class="info-value" style="font-family:monospace;">${H.escapeHtml(animal.microchip || '—')}</div></div>
             <div class="info-item"><div class="info-label">Estado</div><div class="info-value">${H.getStatusBadge(animal.status)}</div></div>
@@ -898,7 +898,18 @@ App.Views = (() => {
                           return `<td>${parseFloat(currVal.toFixed(2))}${arrow}</td>`;
                         }).join('')}
                         <td>${r.vitaminas || '—'}</td>
-                        <td class="leo-dt-obs">${extrasHtml}${H.escapeHtml(r.observaciones || '')}</td>
+                        <td class="leo-dt-obs">
+                          ${extrasHtml}
+                          ${(() => {
+                            const txt = r.observaciones || '';
+                            if (txt.length > 30) {
+                              const safeTxt = H.escapeHtml(txt).replace(/"/g, '&quot;');
+                              const truncatedTxt = H.escapeHtml(H.truncate(txt, 30));
+                              return `<span title="${safeTxt}" class="truncate-clickable" style="cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; color: var(--primary-700);" data-full-text="${safeTxt}" data-record-date="${H.formatDate(r.fecha)}" onclick="event.stopPropagation(); App.UI.showObservationModal(this.getAttribute('data-full-text'), this.getAttribute('data-record-date'))">${truncatedTxt}</span>`;
+                            }
+                            return H.escapeHtml(txt);
+                          })()}
+                        </td>
                         <td class="actions-cell">
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.openLeonesDietForm('${animal.id}', '${animal.department}', '${r.id}')" title="Editar">✏️</button>
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteRecord('diets', '${r.id}')" title="Eliminar">🗑️</button>
