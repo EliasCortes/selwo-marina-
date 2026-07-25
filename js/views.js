@@ -655,6 +655,7 @@ App.Views = (() => {
       case 'weights': await renderWeightTab(container, animal); break;
       case 'enrichments': await renderRecordTab(container, animal, 'enrichments'); break;
       case 'veterinary': await renderVetTab(container, animal); break;
+      case 'health': await renderHealthTab(container, animal); break;
       default: container.innerHTML = renderGeneralTab(animal);
     }
   }
@@ -825,16 +826,16 @@ App.Views = (() => {
             <h3>📋 Historial de Dietas</h3>
           </div>
           <div class="card-body" style="padding:0;">
-            <div class="leo-diet-table-wrap">
-              <table class="leo-diet-table">
+            <div class="leo-diet-table-wrap overflow-x-auto w-full">
+              <table class="leo-diet-table table-fixed w-full">
                 <thead>
                   <tr>
-                    <th class="leo-dt-fecha">Fecha</th>
-                    <th class="leo-dt-total">Total</th>
-                    ${dietCols.map(c => `<th title="${c.title}">${c.label}</th>`).join('')}
-                    <th>Vits</th>
-                    <th class="leo-dt-obs">Observaciones</th>
-                    <th class="leo-dt-actions">Acciones</th>
+                    <th class="leo-dt-fecha py-3 px-3">Fecha</th>
+                    <th class="leo-dt-total w-28 min-w-[110px] py-3 px-3">Total</th>
+                    ${dietCols.map(c => `<th class="w-28 min-w-[110px] py-3 px-3" title="${c.title}">${c.label}</th>`).join('')}
+                    <th class="py-3 px-3">Vits</th>
+                    <th class="leo-dt-obs py-3 px-3">Observaciones</th>
+                    <th class="leo-dt-actions py-3 px-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -866,11 +867,13 @@ App.Views = (() => {
                   const prevE = prevExtras.find(pe => pe.name === e.name);
                   const currKg = parseFloat(e.kg) || 0;
                   const prevKg = prevE ? (parseFloat(prevE.kg) || 0) : 0;
-                  if (currKg > prevKg) arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
-                  else if (currKg < prevKg) arrow = ' <span class="text-red-500" style="color: var(--danger-500, #ef4444); font-size: 0.85em;">▼</span>';
+                  const diff = currKg - prevKg;
+                  if (diff > 0.001) arrow = ' <span class="text-[8.5px] font-medium ml-1" style="color: #047857; transform: translateY(-1px);">▲' + parseFloat(diff.toFixed(2)) + '</span>';
+                  else if (diff < -0.001) arrow = ' <span class="text-[8.5px] font-medium ml-1" style="color: #be123c; transform: translateY(-1px);">▼' + parseFloat(Math.abs(diff).toFixed(2)) + '</span>';
                 } catch(err){}
               } else if (prevR && !prevR.alimento) {
-                arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
+                const currKg = parseFloat(e.kg) || 0;
+                if (currKg > 0.001) arrow = ' <span class="text-[8.5px] font-medium ml-1" style="color: #047857; transform: translateY(-1px);">▲' + parseFloat(currKg.toFixed(2)) + '</span>';
               }
               return `<b>${H.escapeHtml(e.name)}</b> (${parseFloat(parseFloat(e.kg).toFixed(2))}kg${arrow})`;
             }).join('<br>');
@@ -882,23 +885,43 @@ App.Views = (() => {
 
         return `
                       <tr class="${isToday ? 'leo-dt-today' : ''}">
-                        <td class="leo-dt-fecha">
+                        <td class="leo-dt-fecha py-3 px-3">
                           <button class="session-toggle-btn" onclick="this.classList.toggle('expanded'); this.closest('tr').nextElementSibling.style.display = this.classList.contains('expanded') ? 'table-row' : 'none';" title="Ver desglose">▶</button>
                           ${H.formatDate(r.fecha)}
                         </td>
-                        <td class="leo-dt-total"><strong>${parseFloat(parseFloat(r.dieta_total || 0).toFixed(2))}</strong></td>
+                        <td class="leo-dt-total px-3 py-3 w-28 min-w-[110px]">
+                          <div class="flex items-center w-full whitespace-nowrap">
+                            <div class="w-1/2 text-right pr-0.5">
+                              <span class="font-semibold text-gray-900 text-sm">
+                                ${(() => {
+                                  const currT = parseFloat(r.dieta_total) || 0;
+                                  return parseFloat(currT.toFixed(2));
+                                })()}
+                              </span>
+                            </div>
+                            <div class="w-1/2 text-left pl-0.5">
+                              ${(() => {
+                                const currT = parseFloat(r.dieta_total) || 0;
+                                const prevT = prevR ? (parseFloat(prevR.dieta_total) || 0) : null;
+                                const diff = prevT !== null ? currT - prevT : 0;
+                                if (diff > 0.001) return '<span class="text-[8.5px] font-medium" style="color: #047857;">▲' + parseFloat(diff.toFixed(2)) + '</span>';
+                                if (diff < -0.001) return '<span class="text-[8.5px] font-medium" style="color: #be123c;">▼' + parseFloat(Math.abs(diff).toFixed(2)) + '</span>';
+                                return '';
+                              })()}
+                            </div>
+                          </div>
+                        </td>
                         ${dietCols.map(c => {
                           const currVal = getFishVal(r, c.key);
-                          const prevVal = prevR ? getFishVal(prevR, c.key) : currVal;
-                          let arrow = '';
-                          if (prevR) {
-                            if (currVal > prevVal) arrow = ' <span class="text-green-500" style="color: var(--success-500, #22c55e); font-size: 0.85em;">▲</span>';
-                            else if (currVal < prevVal) arrow = ' <span class="text-red-500" style="color: var(--danger-500, #ef4444); font-size: 0.85em;">▼</span>';
-                          }
-                          return `<td>${parseFloat(currVal.toFixed(2))}${arrow}</td>`;
+                          const prevVal = prevR ? getFishVal(prevR, c.key) : null;
+                          const diff = prevVal !== null ? currVal - prevVal : 0;
+                          let badge = '';
+                          if (diff > 0.001) badge = '<span class="text-[8.5px] font-medium" style="color: #047857;">▲' + parseFloat(diff.toFixed(2)) + '</span>';
+                          else if (diff < -0.001) badge = '<span class="text-[8.5px] font-medium" style="color: #be123c;">▼' + parseFloat(Math.abs(diff).toFixed(2)) + '</span>';
+                          return '<td class="px-3 py-3 w-28 min-w-[110px]"><div class="flex items-center w-full whitespace-nowrap"><div class="w-1/2 text-right pr-0.5"><span class="font-semibold text-gray-900 text-sm">' + parseFloat(currVal.toFixed(2)) + '</span></div><div class="w-1/2 text-left pl-0.5">' + badge + '</div></div></td>';
                         }).join('')}
-                        <td>${r.vitaminas || '—'}</td>
-                        <td class="leo-dt-obs">
+                        <td class="py-3 px-3">${r.vitaminas || '—'}</td>
+                        <td class="leo-dt-obs py-3 px-3">
                           ${extrasHtml}
                           ${(() => {
                             const txt = r.observaciones || '';
@@ -910,7 +933,7 @@ App.Views = (() => {
                             return H.escapeHtml(txt);
                           })()}
                         </td>
-                        <td class="actions-cell">
+                        <td class="actions-cell py-3 px-3">
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.openLeonesDietForm('${animal.id}', '${animal.department}', '${r.id}')" title="Editar">✏️</button>
                           <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteRecord('diets', '${r.id}')" title="Eliminar">🗑️</button>
                         </td>
@@ -1315,7 +1338,7 @@ App.Views = (() => {
           </td>
           ${App.Views.currentDietCols.map(c => `
             <td>
-              <input class="form-input" type="number" value="${session[c.key] != null ? session[c.key] : ''}" min="0" step="0.01"
+              <input class="form-input" type="number" value="${session[c.key] != null ? session[c.key] : ''}" min="0" step="0.1"
                 onchange="App.Views.updateLeoDietSession(${index}, '${c.key}', this.value)">
             </td>
           `).join('')}
@@ -1369,7 +1392,7 @@ App.Views = (() => {
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" style="font-size: 0.8rem;">Cantidad (kg)</label>
-          <input class="form-input" type="number" value="${extra.kg || 0}" min="0" step="0.01"
+          <input class="form-input" type="number" value="${extra.kg || 0}" min="0" step="0.1"
             oninput="App.Views.updateLeoDietExtra(${index}, 'kg', this.value)">
         </div>
         <button type="button" class="btn btn-ghost btn-icon" onclick="App.Views.removeLeoDietExtra(${index})" title="Eliminar" style="color: var(--danger-500);">🗑️</button>
@@ -2572,6 +2595,239 @@ App.Views = (() => {
     });
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  HEALTH EVENTS TAB — Registro de eventos de salud
+  // ══════════════════════════════════════════════════════════════
+
+  const HEALTH_EVENT_TYPES = ['Tos', 'Vómito', 'Diarrea', 'Letargia', 'Herida', 'Otro'];
+
+  const EVENT_TYPE_STYLES = {
+    'Tos':      { bg: '#fef3c7', color: '#92400e', icon: '🤧' },
+    'Vómito':   { bg: '#fee2e2', color: '#991b1b', icon: '🤮' },
+    'Diarrea':  { bg: '#ffe4e6', color: '#9f1239', icon: '💊' },
+    'Letargia': { bg: '#e0e7ff', color: '#3730a3', icon: '😴' },
+    'Herida':   { bg: '#fce7f3', color: '#9d174d', icon: '🩹' },
+    'Otro':     { bg: '#f3f4f6', color: '#374151', icon: '📋' },
+  };
+
+  function getEventTypeBadge(type) {
+    const s = EVENT_TYPE_STYLES[type] || EVENT_TYPE_STYLES['Otro'];
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:600;background:${s.bg};color:${s.color};">${s.icon} ${H.escapeHtml(type)}</span>`;
+  }
+
+  function formatEventTime(isoStr) {
+    if (!isoStr) return '—';
+    const d = new Date(isoStr);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  }
+
+  async function renderHealthTab(container, animal) {
+    const { getHealthEvents } = await import('../src/services/animalService.js?v=8');
+
+    let events = [];
+    try {
+      events = await getHealthEvents(animal.id);
+    } catch (err) {
+      console.error('Error cargando eventos de salud:', err);
+    }
+
+    // Calcular total del día actual
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayEvents = events.filter(e => e.event_time && e.event_time.startsWith(todayStr));
+    const todayTotal = todayEvents.reduce((sum, e) => sum + (parseInt(e.frequency) || 0), 0);
+
+    // Tabla de historial
+    const tableRows = events.length > 0 ? events.map(e => `
+      <tr>
+        <td style="white-space:nowrap;padding:10px 12px;font-size:0.85rem;color:var(--gray-700);">${formatEventTime(e.event_time)}</td>
+        <td style="padding:10px 12px;">${getEventTypeBadge(e.event_type)}</td>
+        <td style="padding:10px 12px;text-align:center;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--primary-50);color:var(--primary-700);font-weight:700;font-size:0.9rem;">${e.frequency || 0}</span>
+        </td>
+        <td style="padding:10px 12px;font-size:0.85rem;color:var(--gray-600);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${H.escapeHtml(e.notes || '—')}</td>
+        <td style="padding:10px 12px;white-space:nowrap;">
+          <button class="btn btn-ghost btn-icon" onclick="App.Views.openHealthEventForm('${animal.id}', '${e.id}')" title="Editar">✏️</button>
+          <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteHealthEvent('${e.id}', '${animal.id}')" title="Eliminar">🗑️</button>
+        </td>
+      </tr>
+    `).join('') : `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:2rem;color:var(--gray-400);font-size:0.9rem;">
+          No hay eventos registrados. Pulsa el botón para añadir el primero.
+        </td>
+      </tr>
+    `;
+
+    container.innerHTML = `
+      <!-- Contador destacado del día -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+        <div class="card" style="background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);border:none;">
+          <div class="card-body" style="display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-4);">
+            <div style="width:56px;height:56px;border-radius:16px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🔴</div>
+            <div>
+              <div style="font-size:2rem;font-weight:800;color:#991b1b;line-height:1;">${todayTotal}</div>
+              <div style="font-size:0.8rem;color:#b91c1c;font-weight:500;margin-top:2px;">Episodios hoy</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="background:linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);border:none;">
+          <div class="card-body" style="display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-4);">
+            <div style="width:56px;height:56px;border-radius:16px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">📊</div>
+            <div>
+              <div style="font-size:2rem;font-weight:800;color:#1e40af;line-height:1;">${events.length}</div>
+              <div style="font-size:0.8rem;color:#1d4ed8;font-weight:500;margin-top:2px;">Registros totales</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de historial -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🩺 Historial de Eventos de Salud</h3>
+          <button class="btn btn-primary btn-sm" onclick="App.Views.openHealthEventForm('${animal.id}')">+ Registrar Evento</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="background:var(--gray-50);border-bottom:2px solid var(--gray-200);">
+                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Fecha / Hora</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Tipo</th>
+                  <th style="padding:10px 12px;text-align:center;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Frecuencia</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Observaciones</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function openHealthEventForm(animalId, eventId = null) {
+    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=8');
+
+    let defaults = {
+      event_type: 'Tos',
+      event_time: '',
+      frequency: 1,
+      notes: '',
+    };
+    let isEdit = false;
+
+    if (eventId) {
+      isEdit = true;
+      try {
+        const events = await getHealthEvents(animalId);
+        const existing = events.find(e => e.id === eventId);
+        if (existing) {
+          defaults = {
+            event_type: existing.event_type || 'Tos',
+            event_time: existing.event_time ? existing.event_time.slice(0, 16) : '',
+            frequency: existing.frequency || 1,
+            notes: existing.notes || '',
+          };
+        }
+      } catch (err) {
+        console.error('Error cargando evento:', err);
+      }
+    }
+
+    // Default: fecha/hora actual en formato datetime-local
+    if (!defaults.event_time) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      defaults.event_time = now.toISOString().slice(0, 16);
+    }
+
+    const typeOptions = HEALTH_EVENT_TYPES.map(t =>
+      `<option value="${t}" ${defaults.event_type === t ? 'selected' : ''}>${t}</option>`
+    ).join('');
+
+    const formHtml = `
+      <form id="health-event-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="he-event-time">Fecha y Hora *</label>
+          <input class="form-input" type="datetime-local" id="he-event-time" value="${defaults.event_time}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="he-event-type">Tipo de Evento *</label>
+          <select class="form-select" id="he-event-type" required>
+            ${typeOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="he-frequency">Frecuencia / Repeticiones *</label>
+          <input class="form-input" type="number" id="he-frequency" value="${defaults.frequency}" min="1" step="1" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="he-notes">Observaciones</label>
+          <textarea class="form-textarea" id="he-notes" placeholder="Notas sobre el episodio...">${H.escapeHtml(defaults.notes)}</textarea>
+        </div>
+      </form>
+    `;
+
+    UI.showModal({
+      title: isEdit ? '✏️ Editar Evento de Salud' : '+ Registrar Evento de Salud',
+      contentHtml: formHtml,
+      saveLabel: isEdit ? 'Actualizar Evento' : 'Guardar Evento',
+      onSave: async () => {
+        const eventTime = document.getElementById('he-event-time')?.value;
+        const eventType = document.getElementById('he-event-type')?.value;
+        const frequency = document.getElementById('he-frequency')?.value;
+        const notes = document.getElementById('he-notes')?.value;
+
+        if (!eventTime) { UI.showToast('La fecha y hora son obligatorias', 'error'); return; }
+        if (!frequency || parseInt(frequency) < 1) { UI.showToast('La frecuencia debe ser al menos 1', 'error'); return; }
+
+        const record = {
+          animal_id: animalId,
+          event_type: eventType,
+          event_time: new Date(eventTime).toISOString(),
+          frequency: parseInt(frequency),
+          notes: notes || '',
+        };
+
+        try {
+          if (isEdit) {
+            await updateHealthEvent(eventId, record);
+            UI.showToast('Evento actualizado correctamente', 'success');
+          } else {
+            await createHealthEvent(record);
+            UI.showToast('Evento registrado correctamente', 'success');
+          }
+          UI.closeModal();
+          App.Router.resolve();
+        } catch (err) {
+          UI.showToast('Error: ' + err.message, 'error');
+        }
+      },
+    });
+  }
+
+  async function deleteHealthEvent(eventId, animalId) {
+    if (!confirm('¿Eliminar este evento de salud?')) return;
+
+    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=8');
+    try {
+      await delFn(eventId);
+      UI.showToast('Evento eliminado', 'success');
+      App.Router.resolve();
+    } catch (err) {
+      UI.showToast('Error: ' + err.message, 'error');
+    }
+  }
+
   return {
     renderSplash,
     renderMenu,
@@ -2611,6 +2867,8 @@ App.Views = (() => {
     previewPhoto,
     openDeptRecordForm,
     openDietAnimalSelector,
+    openHealthEventForm,
+    deleteHealthEvent,
     currentDietExtras: [],
     currentDietSessions: [],
   };

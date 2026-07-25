@@ -265,6 +265,7 @@ App.Helpers = (() => {
     { id: 'weights', name: 'Pesos', icon: '⚖️' },
     { id: 'enrichments', name: 'Enriquecimientos', icon: '🧩' },
     { id: 'veterinary', name: 'Veterinaria', icon: '🏥' },
+    { id: 'health', name: 'Salud', icon: '🩺' },
   ];
 
   // ── Species Emoji Map ─────────────────────────────────────
@@ -439,6 +440,12 @@ App.Helpers = (() => {
       { key: 'medication', label: 'Medicación' },
       { key: 'priority', label: 'Prioridad', format: getPriorityBadge },
       { key: 'observations', label: 'Observaciones', truncate: 30 },
+    ],
+    health_events: [
+      { key: 'event_time', label: 'Fecha/Hora', format: formatDateTime },
+      { key: 'event_type', label: 'Tipo' },
+      { key: 'frequency', label: 'Frecuencia' },
+      { key: 'notes', label: 'Observaciones', truncate: 40 },
     ],
   };
 

@@ -586,3 +586,78 @@ export async function uploadAnimalPhoto(animalId, file) {
   // Añade un timestamp query param para forzar la recarga de la imagen (cache busting)
   return `${data.publicUrl}?t=${Date.now()}`;
 }
+
+// ─────────────────────────────────────────────────────────────
+//  HEALTH EVENTS — Tabla animal_health_events
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene eventos de salud de un animal, ordenados por event_time DESC.
+ */
+export async function getHealthEvents(animalId, limit = 100) {
+  const { data, error } = await supabase
+    .from("animal_health_events")
+    .select("*")
+    .eq("animal_id", animalId)
+    .order("event_time", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Crea un nuevo evento de salud.
+ */
+export async function createHealthEvent(record) {
+  const { data, error } = await supabase
+    .from("animal_health_events")
+    .insert({
+      animal_id:  record.animal_id,
+      event_type: record.event_type || "Tos",
+      event_time: record.event_time || new Date().toISOString(),
+      frequency:  parseInt(record.frequency) || 1,
+      notes:      record.notes || "",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Actualiza un evento de salud existente.
+ */
+export async function updateHealthEvent(eventId, record) {
+  assertUUID(eventId, "updateHealthEvent");
+
+  const { data, error } = await supabase
+    .from("animal_health_events")
+    .update({
+      event_type: record.event_type,
+      event_time: record.event_time,
+      frequency:  parseInt(record.frequency) || 1,
+      notes:      record.notes || "",
+    })
+    .eq("id", eventId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Elimina un evento de salud por su UUID.
+ */
+export async function deleteHealthEvent(eventId) {
+  assertUUID(eventId, "deleteHealthEvent");
+
+  const { error } = await supabase
+    .from("animal_health_events")
+    .delete()
+    .eq("id", eventId);
+
+  if (error) throw error;
+}

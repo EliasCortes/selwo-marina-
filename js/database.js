@@ -7,10 +7,10 @@ App.DB = (() => {
   'use strict';
 
   const DB_NAME = 'ControlAnimalSelwo';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   let db = null;
 
-  const STORES = ['animals', 'diets', 'trainings', 'weights', 'enrichments', 'veterinary', 'photos', 'favorites', 'alerts', 'attachments', 'users'];
+  const STORES = ['animals', 'diets', 'trainings', 'weights', 'enrichments', 'veterinary', 'photos', 'favorites', 'alerts', 'attachments', 'users', 'health_events'];
 
   /**
    * Initialize the database: open connection and create stores/indexes.
@@ -80,6 +80,15 @@ App.DB = (() => {
             const userStore = database.createObjectStore('users', { keyPath: 'id' });
             userStore.createIndex('username', 'username', { unique: true });
             userStore.createIndex('role', 'role', { unique: false });
+          }
+        }
+
+        // ── V3 Stores (health events) ────────────────────────
+        if (oldVersion < 3) {
+          if (!database.objectStoreNames.contains('health_events')) {
+            const heStore = database.createObjectStore('health_events', { keyPath: 'id' });
+            heStore.createIndex('animal_id', 'animal_id', { unique: false });
+            heStore.createIndex('event_time', 'event_time', { unique: false });
           }
         }
       };
@@ -329,6 +338,7 @@ App.DB = (() => {
   const WeightService = createRecordService('weights');
   const EnrichmentService = createRecordService('enrichments');
   const VeterinaryService = createRecordService('veterinary');
+  const HealthEventService = createRecordService('health_events');
 
   // ── Photo Service ─────────────────────────────────────────
   const PhotoService = {
@@ -402,6 +412,7 @@ App.DB = (() => {
       weights: WeightService,
       enrichments: EnrichmentService,
       veterinary: VeterinaryService,
+      health_events: HealthEventService,
       animals: AnimalService,
       photos: PhotoService,
       favorites: FavoriteService,
@@ -432,6 +443,7 @@ App.DB = (() => {
     WeightService,
     EnrichmentService,
     VeterinaryService,
+    HealthEventService,
     PhotoService,
     FavoriteService,
     AlertService,
