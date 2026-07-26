@@ -116,7 +116,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalsCount } = await import('../src/services/animalService.js?v=8');
+    const { getAnimalsCount } = await import('../src/services/animalService.js?v=13');
 
     // Get animal counts per department from Supabase
     const counts = {};
@@ -265,7 +265,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimals } = await import('../src/services/animalService.js?v=8');
+    const { getAnimals } = await import('../src/services/animalService.js?v=13');
 
     // Obtener los animales reales de Supabase
     let dbAnimals = [];
@@ -380,21 +380,26 @@ App.Views = (() => {
     if (sectionId === 'animals') { return renderAnimalList(params); }
     if (sectionId === 'reports') { return renderReports(params); }
     if (sectionId === 'trainings') { return renderGlobalTrainingView(params); }
+    if (sectionId === 'weights') { return renderGlobalWeightsDashboard(params); }
 
     const app = document.getElementById('app');
     let records;
     let animalMap = {};
     const columns = H.TABLE_COLUMNS[sectionId] || [];
 
-    // ── Dietas: leer directamente de Supabase ─────────────
-    if (sectionId === 'diets') {
-      const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=8');
+    // ── Dietas y Pesos: leer directamente de Supabase ─────────────
+    if (sectionId === 'diets' || sectionId === 'weights') {
+      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
       try {
-        records = await getAllDietRecords(deptId);
+        if (sectionId === 'diets') {
+          records = await getAllDietRecords(deptId);
+        } else if (sectionId === 'weights') {
+          records = await getAllWeightRecords(deptId);
+        }
         const { data: supaAnimals } = await getAnimals({ departamentoId: deptId });
         (supaAnimals || []).forEach(a => { animalMap[a.id] = a.nombre; });
       } catch (err) {
-        console.error('Error cargando dietas de Supabase:', err);
+        console.error(`Error cargando ${sectionId} de Supabase:`, err);
         records = [];
       }
     } else {
@@ -530,7 +535,7 @@ App.Views = (() => {
     const { animalId, tab = 'general' } = params;
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalById } = await import('../src/services/animalService.js?v=8');
+    const { getAnimalById } = await import('../src/services/animalService.js?v=13');
 
     let dbAnimal = null;
     let errorMsg = '';
@@ -744,7 +749,7 @@ App.Views = (() => {
   async function renderLeonesDietTab(container, animal) {
     const {
       getDietRecords, getLatestDietRecord, getDietRecordsByDateRange, createDietRecord
-    } = await import('../src/services/animalService.js?v=8');
+    } = await import('../src/services/animalService.js?v=13');
 
     const records = await getDietRecords(animal.id, 100);
     const latest = records.length > 0 ? records[0] : null;
@@ -1024,7 +1029,7 @@ App.Views = (() => {
 
     if (leonesDietChart) { leonesDietChart.destroy(); leonesDietChart = null; }
 
-    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=8');
+    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=13');
 
     let records;
     if (rangeDays === 0) {
@@ -1121,7 +1126,7 @@ App.Views = (() => {
   }
 
   async function openLeonesDietForm(animalId, deptId, recordId = null, copyPrevious = false) {
-    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=8');
+    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=13');
 
     App.Views.currentDietExtras = [];
     App.Views.currentDietSessions = [];
@@ -1425,7 +1430,7 @@ App.Views = (() => {
   // ── Diet Tab (Detailed Fish Breakdown + Chart) ─────────────
   async function renderDietTab(container, animal) {
     // Leer dietas desde Supabase en lugar de IndexedDB
-    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=8');
+    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=13');
     let records = [];
     try {
       records = await getRecordsByAnimal('diets', animal.id);
@@ -1619,7 +1624,7 @@ App.Views = (() => {
     try { breakdown = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { breakdown = {}; }
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { createDietRecord } = await import('../src/services/animalService.js?v=8');
+    const { createDietRecord } = await import('../src/services/animalService.js?v=13');
 
     const dietData = {
       animal_id: animalId,
@@ -1801,7 +1806,7 @@ App.Views = (() => {
   async function renderWeightTab(container, animal) {
     let weights = [];
     try {
-      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=8');
+      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=13');
       weights = await getRecordsByAnimal('weights', animal.id);
     } catch (err) {
       UI.showToast('Error al sincronizar pesos desde la base de datos: ' + err.message, 'error');
@@ -1946,7 +1951,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=9');
+    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=13');
     
     let records = [];
     let animalMap = {};
@@ -2057,7 +2062,7 @@ App.Views = (() => {
   }
 
   async function openTrainingForm(animalId, deptId, recordId = null) {
-    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=9');
+    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
 
     const isEdit = !!recordId;
     let defaults = { date: H.today(), result: 'Excelente', behavior: '', observations: '', numero_sesion: 1, animal_id: animalId || '' };
@@ -2209,7 +2214,7 @@ App.Views = (() => {
     const section = H.getSectionMeta(type);
     let existingData = {};
 
-    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=8');
+    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=13');
 
     if (isEdit) {
       existingData = await getRecordById(type, recordId) || {};
@@ -2270,7 +2275,7 @@ App.Views = (() => {
       return;
     }
 
-    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=8');
+    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=13');
     UI.showConfirm(
       `¿Estás seguro de eliminar este registro de ${section.name} en Supabase?`,
       async () => {
@@ -2294,7 +2299,7 @@ App.Views = (() => {
     const isEdit = !!animalId;
     let existingData = {};
 
-    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=8');
+    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=13');
 
     if (isEdit) {
       try {
@@ -2380,7 +2385,7 @@ App.Views = (() => {
   }
 
   async function deleteAnimal(animalId) {
-    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=8');
+    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=13');
 
     let animal;
     try {
@@ -2415,6 +2420,161 @@ App.Views = (() => {
     );
   }
 
+  // ──────────────────────────────────────────────────────────
+  // PESOS GENERALES (DASHBOARD)
+  // ──────────────────────────────────────────────────────────
+  async function renderGlobalWeightsDashboard(params) {
+    const { deptId } = params;
+    const dept = H.getDeptMeta(deptId);
+    const app = document.getElementById('app');
+
+    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
+    
+    let animalMap = {};
+    let animalAvatars = {};
+    let animalSpecies = {};
+    let weightsData = [];
+
+    try {
+      const records = await getAllWeightRecords(deptId);
+      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      
+      for (const a of (animals || [])) {
+        animalMap[a.id] = a.nombre;
+        animalSpecies[a.id] = a.especie;
+        animalAvatars[a.id] = a.foto_url || await App.Photos.getPhotoUrl(a.id, a.especie);
+        
+        // Find weights for this animal
+        const animalWeights = records.filter(r => r.animal_id === a.id);
+        
+        if (animalWeights.length > 0) {
+          const latest = animalWeights[0];
+          const previous = animalWeights.length > 1 ? animalWeights[1] : null;
+          
+          let trend = 'same'; // same, up, down
+          let trendDiff = 0;
+          if (previous && latest.weight_kg !== undefined && previous.weight_kg !== undefined) {
+            trendDiff = (latest.weight_kg - previous.weight_kg);
+            if (trendDiff > 0) trend = 'up';
+            else if (trendDiff < 0) trend = 'down';
+          }
+
+          weightsData.push({
+            animalId: a.id,
+            name: a.nombre,
+            species: a.especie,
+            avatar: animalAvatars[a.id],
+            latestWeight: latest.weight_kg,
+            date: latest.date,
+            trend: trend,
+            trendDiff: trendDiff,
+            observations: latest.observations,
+            totalRecords: animalWeights.length
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando pesos globales:', err);
+    }
+
+    // Ordenar por nombre de animal
+    weightsData.sort((a, b) => a.name.localeCompare(b.name));
+
+    const getTrendBadge = (trend, diff) => {
+      if (trend === 'up') return `<span class="badge" style="background:#ecfdf5;color:#059669;gap:4px;">↗ ${Math.abs(diff).toFixed(2)}kg</span>`;
+      if (trend === 'down') return `<span class="badge" style="background:#fef2f2;color:#dc2626;gap:4px;">↘ ${Math.abs(diff).toFixed(2)}kg</span>`;
+      if (trend === 'same' && diff !== null) return `<span class="badge" style="background:#f1f5f9;color:#64748b;gap:4px;">— 0kg</span>`;
+      return '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>';
+    };
+
+    let tableHtml = '';
+    if (weightsData.length === 0) {
+      tableHtml = `
+        <div style="text-align:center; padding: 3rem; color:var(--gray-500);">
+          <div style="font-size:3rem; margin-bottom:1rem;">⚖️</div>
+          <p>No hay registros de peso todavía para este departamento.</p>
+        </div>`;
+    } else {
+      const rows = weightsData.map(data => {
+        return `
+          <tr>
+            <td style="padding:12px 16px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:10px; overflow:hidden; background:var(--gray-100); flex-shrink:0;">
+                  <img src="${data.avatar}" alt="${data.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='${H.getDefaultPhotoSvg(data.species)}'">
+                </div>
+                <div>
+                  <div style="font-weight:600; color:var(--gray-900); font-size:0.95rem;">${data.name}</div>
+                  <div style="font-size:0.75rem; color:var(--gray-500);">${data.species}</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:12px 16px; font-weight:700; color:var(--gray-800); font-size:1.05rem;">
+              ${data.latestWeight ? data.latestWeight + ' kg' : '—'}
+            </td>
+            <td style="padding:12px 16px; font-size:0.85rem; color:var(--gray-600);">
+              ${H.formatDate(data.date)}
+            </td>
+            <td style="padding:12px 16px;">
+              ${getTrendBadge(data.trend, data.trendDiff)}
+            </td>
+            <td style="padding:12px 16px; font-size:0.85rem; color:var(--gray-600); max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${H.escapeHtml(data.observations || '—')}
+            </td>
+            <td style="padding:12px 16px; text-align:right;">
+              <button class="btn btn-ghost" onclick="App.Router.navigate('/animal/${data.animalId}/weights')" style="font-size:0.85rem; padding:6px 12px; height:auto; color:var(--primary-600); font-weight:600; background:var(--primary-50);">
+                Historial (${data.totalRecords}) ➔
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tableHtml = `
+        <div class="table-container">
+          <table class="table" style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--gray-200); background:var(--gray-50);">
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500); width:250px;">Animal</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Último Peso</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Fecha</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Tendencia</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Observaciones</th>
+                <th style="padding:12px 16px; text-align:right; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500); width:150px;">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    app.innerHTML = `
+      ${UI.renderHeader(`${dept.name} — Pesos (Dashboard)`, `/dept/${deptId}`)}
+      ${UI.renderBreadcrumbs([
+        { label: 'Inicio', path: '/menu' },
+        { label: dept.name, path: `/dept/${deptId}` },
+        { label: 'Pesos (Dashboard)' },
+      ])}
+      <main class="main-content">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <h2>⚖️ Dashboard de Pesos — ${dept.name}</h2>
+          <button class="btn btn-primary" onclick="App.Views.openDeptRecordForm('weights', '${deptId}')">+ Nuevo Registro</button>
+        </div>
+        
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-body" style="padding:0;">
+            ${tableHtml}
+          </div>
+        </div>
+      </main>
+    `;
+
+    UI.initHeaderInteractions();
+  }
+
   // ── Dept Record Form (with animal selector) ───────────────
   
   async function openDietAnimalSelector(deptId) {
@@ -2435,7 +2595,7 @@ App.Views = (() => {
     if (modalSaveBtn) modalSaveBtn.disabled = true;
 
     try {
-      const { getAnimals } = await import('../src/services/animalService.js?v=8');
+      const { getAnimals } = await import('../src/services/animalService.js?v=13');
       const animalsResult = await getAnimals({ departamentoId: deptId });
       const animals = animalsResult?.data || [];
 
@@ -2488,7 +2648,7 @@ App.Views = (() => {
   }
 
   async function openDeptRecordForm(type, deptId) {
-    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=8');
+    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=13');
 
     let animalsResult;
     try {
@@ -2627,7 +2787,7 @@ App.Views = (() => {
   }
 
   async function renderHealthTab(container, animal) {
-    const { getHealthEvents } = await import('../src/services/animalService.js?v=8');
+    const { getHealthEvents } = await import('../src/services/animalService.js?v=13');
 
     let events = [];
     try {
@@ -2641,27 +2801,116 @@ App.Views = (() => {
     const todayEvents = events.filter(e => e.event_time && e.event_time.startsWith(todayStr));
     const todayTotal = todayEvents.reduce((sum, e) => sum + (parseInt(e.frequency) || 0), 0);
 
-    // Tabla de historial
-    const tableRows = events.length > 0 ? events.map(e => `
-      <tr>
-        <td style="white-space:nowrap;padding:10px 12px;font-size:0.85rem;color:var(--gray-700);">${formatEventTime(e.event_time)}</td>
-        <td style="padding:10px 12px;">${getEventTypeBadge(e.event_type)}</td>
-        <td style="padding:10px 12px;text-align:center;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--primary-50);color:var(--primary-700);font-weight:700;font-size:0.9rem;">${e.frequency || 0}</span>
-        </td>
-        <td style="padding:10px 12px;font-size:0.85rem;color:var(--gray-600);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${H.escapeHtml(e.notes || '—')}</td>
-        <td style="padding:10px 12px;white-space:nowrap;">
-          <button class="btn btn-ghost btn-icon" onclick="App.Views.openHealthEventForm('${animal.id}', '${e.id}')" title="Editar">✏️</button>
-          <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteHealthEvent('${e.id}', '${animal.id}')" title="Eliminar">🗑️</button>
-        </td>
-      </tr>
-    `).join('') : `
-      <tr>
-        <td colspan="5" style="text-align:center;padding:2rem;color:var(--gray-400);font-size:0.9rem;">
-          No hay eventos registrados. Pulsa el botón para añadir el primero.
-        </td>
-      </tr>
-    `;
+    // Agrupar eventos por día
+    const groupedEvents = {};
+    events.forEach(e => {
+      const d = e.event_time ? new Date(e.event_time) : new Date();
+      
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      let dateDisplay = `${dd}/${mm}/${yyyy}`;
+      
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const isToday = (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear());
+      const isYesterday = (d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear());
+      
+      if (isToday) dateDisplay = `Hoy - ${dateDisplay}`;
+      else if (isYesterday) dateDisplay = `Ayer - ${dateDisplay}`;
+      
+      if (!groupedEvents[dateKey]) {
+        groupedEvents[dateKey] = {
+          display: dateDisplay,
+          total: 0,
+          events: []
+        };
+      }
+      
+      groupedEvents[dateKey].events.push(e);
+      groupedEvents[dateKey].total += (parseInt(e.frequency) || 0);
+    });
+
+    // Ordenar días de forma descendente (más recientes primero)
+    const sortedDays = Object.keys(groupedEvents).sort((a, b) => b.localeCompare(a));
+
+    let htmlGroups = '';
+    
+    if (sortedDays.length === 0) {
+      htmlGroups = `
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-body" style="text-align:center;padding:2rem;color:var(--gray-400);font-size:0.9rem;">
+            No hay eventos registrados. Pulsa el botón superior para añadir el primero.
+          </div>
+        </div>
+      `;
+    } else {
+      sortedDays.forEach(day => {
+        const group = groupedEvents[day];
+        
+        // Ordenar eventos dentro del día por hora descendente
+        group.events.sort((a, b) => {
+          const ta = a.event_time ? new Date(a.event_time).getTime() : 0;
+          const tb = b.event_time ? new Date(b.event_time).getTime() : 0;
+          return tb - ta;
+        });
+
+        const rows = group.events.map(e => {
+          const d = e.event_time ? new Date(e.event_time) : new Date();
+          const hh = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          const timeStr = `${hh}:${min}`;
+
+          return `
+            <tr>
+              <td style="white-space:nowrap;padding:12px 16px;font-size:0.85rem;color:var(--gray-700);font-weight:500;">${timeStr}</td>
+              <td style="padding:12px 16px;">${getEventTypeBadge(e.event_type)}</td>
+              <td style="padding:12px 16px;text-align:center;">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--primary-50);color:var(--primary-700);font-weight:700;font-size:0.9rem;">${e.frequency || 0}</span>
+              </td>
+              <td style="padding:12px 16px;font-size:0.85rem;color:var(--gray-600);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${H.escapeHtml(e.notes || '—')}</td>
+              <td style="padding:12px 16px;white-space:nowrap;text-align:right;">
+                <button class="btn btn-ghost btn-icon" onclick="App.Views.openHealthEventForm('${animal.id}', '${e.id}')" title="Editar">✏️</button>
+                <button class="btn btn-ghost btn-icon" onclick="App.Views.deleteHealthEvent('${e.id}', '${animal.id}')" title="Eliminar">🗑️</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        htmlGroups += `
+          <div class="card" style="margin-bottom:var(--sp-4); overflow:hidden;">
+            <div style="background:var(--gray-50); padding:12px 16px; border-bottom:1px solid var(--gray-200); display:flex; justify-content:space-between; align-items:center;">
+              <h4 style="margin:0; font-size:0.95rem; color:var(--gray-800); display:flex; align-items:center; gap:8px;">
+                📅 <span>${group.display}</span>
+              </h4>
+              <span style="font-size:0.85rem; font-weight:600; color:var(--primary-700); background:var(--primary-50); padding:4px 10px; border-radius:9999px;">
+                Total del día: ${group.total} episodios
+              </span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--gray-200);">
+                    <th style="padding:10px 16px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;width:80px;">Hora</th>
+                    <th style="padding:10px 16px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;width:120px;">Tipo</th>
+                    <th style="padding:10px 16px;text-align:center;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;width:100px;">Frecuencia</th>
+                    <th style="padding:10px 16px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Observaciones</th>
+                    <th style="padding:10px 16px;text-align:right;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;width:100px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      });
+    }
 
     container.innerHTML = `
       <!-- Contador destacado del día -->
@@ -2686,36 +2935,18 @@ App.Views = (() => {
         </div>
       </div>
 
-      <!-- Tabla de historial -->
-      <div class="card">
-        <div class="card-header">
-          <h3>🩺 Historial de Eventos de Salud</h3>
-          <button class="btn btn-primary btn-sm" onclick="App.Views.openHealthEventForm('${animal.id}')">+ Registrar Evento</button>
-        </div>
-        <div class="card-body" style="padding:0;">
-          <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;">
-              <thead>
-                <tr style="background:var(--gray-50);border-bottom:2px solid var(--gray-200);">
-                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Fecha / Hora</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Tipo</th>
-                  <th style="padding:10px 12px;text-align:center;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Frecuencia</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Observaciones</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray-500);font-weight:600;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${tableRows}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <!-- Historial de eventos agrupados -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-4);">
+        <h3 style="margin:0; font-size:1.25rem; color:var(--gray-800);">🩺 Historial de Eventos de Salud</h3>
+        <button class="btn btn-primary btn-sm" onclick="App.Views.openHealthEventForm('${animal.id}')">+ Registrar Evento</button>
       </div>
+
+      ${htmlGroups}
     `;
   }
 
   async function openHealthEventForm(animalId, eventId = null) {
-    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=8');
+    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=13');
 
     let defaults = {
       event_type: 'Tos',
@@ -2818,7 +3049,7 @@ App.Views = (() => {
   async function deleteHealthEvent(eventId, animalId) {
     if (!confirm('¿Eliminar este evento de salud?')) return;
 
-    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=8');
+    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=13');
     try {
       await delFn(eventId);
       UI.showToast('Evento eliminado', 'success');

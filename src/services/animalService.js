@@ -661,3 +661,47 @@ export async function deleteHealthEvent(eventId) {
 
   if (error) throw error;
 }
+
+// ─────────────────────────────────────────────────────────────
+//  PESOS — Vistas globales (Departamentos)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene el historial global de pesos (opcionalmente filtrado por departamento)
+ * haciendo JOIN con la tabla animales.
+ */
+export async function getAllWeightRecords(departamentoId = null) {
+  let query = supabase
+    .from("pesos")
+    .select(`
+      id,
+      animal_id,
+      fecha,
+      peso_kg,
+      observaciones,
+      animales!inner (
+        nombre,
+        departamento_id
+      )
+    `)
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (departamentoId) {
+    query = query.eq("animales.departamento_id", departamentoId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // Mapeamos para que coincida con las claves que espera la tabla general de la UI
+  return data.map(record => ({
+    id: record.id,
+    animal_id: record.animal_id,
+    animal_name: record.animales?.nombre || "Desconocido",
+    date: record.fecha,
+    weight_kg: record.peso_kg,
+    observations: record.observaciones,
+  }));
+}
+
