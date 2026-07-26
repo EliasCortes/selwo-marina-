@@ -116,7 +116,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalsCount } = await import('../src/services/animalService.js?v=13');
+    const { getAnimalsCount } = await import('../src/services/animalService.js?v=14');
 
     // Get animal counts per department from Supabase
     const counts = {};
@@ -265,7 +265,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimals } = await import('../src/services/animalService.js?v=13');
+    const { getAnimals } = await import('../src/services/animalService.js?v=14');
 
     // Obtener los animales reales de Supabase
     let dbAnimals = [];
@@ -381,6 +381,7 @@ App.Views = (() => {
     if (sectionId === 'reports') { return renderReports(params); }
     if (sectionId === 'trainings') { return renderGlobalTrainingView(params); }
     if (sectionId === 'weights') { return renderGlobalWeightsDashboard(params); }
+    if (sectionId === 'diets') { return renderGlobalDietsDashboard(params); }
 
     const app = document.getElementById('app');
     let records;
@@ -389,7 +390,7 @@ App.Views = (() => {
 
     // ── Dietas y Pesos: leer directamente de Supabase ─────────────
     if (sectionId === 'diets' || sectionId === 'weights') {
-      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
+      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
       try {
         if (sectionId === 'diets') {
           records = await getAllDietRecords(deptId);
@@ -535,7 +536,7 @@ App.Views = (() => {
     const { animalId, tab = 'general' } = params;
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalById } = await import('../src/services/animalService.js?v=13');
+    const { getAnimalById } = await import('../src/services/animalService.js?v=14');
 
     let dbAnimal = null;
     let errorMsg = '';
@@ -749,7 +750,7 @@ App.Views = (() => {
   async function renderLeonesDietTab(container, animal) {
     const {
       getDietRecords, getLatestDietRecord, getDietRecordsByDateRange, createDietRecord
-    } = await import('../src/services/animalService.js?v=13');
+    } = await import('../src/services/animalService.js?v=14');
 
     const records = await getDietRecords(animal.id, 100);
     const latest = records.length > 0 ? records[0] : null;
@@ -1029,7 +1030,7 @@ App.Views = (() => {
 
     if (leonesDietChart) { leonesDietChart.destroy(); leonesDietChart = null; }
 
-    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=13');
+    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=14');
 
     let records;
     if (rangeDays === 0) {
@@ -1126,7 +1127,7 @@ App.Views = (() => {
   }
 
   async function openLeonesDietForm(animalId, deptId, recordId = null, copyPrevious = false) {
-    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=13');
+    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=14');
 
     App.Views.currentDietExtras = [];
     App.Views.currentDietSessions = [];
@@ -1430,7 +1431,7 @@ App.Views = (() => {
   // ── Diet Tab (Detailed Fish Breakdown + Chart) ─────────────
   async function renderDietTab(container, animal) {
     // Leer dietas desde Supabase en lugar de IndexedDB
-    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=13');
+    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=14');
     let records = [];
     try {
       records = await getRecordsByAnimal('diets', animal.id);
@@ -1624,7 +1625,7 @@ App.Views = (() => {
     try { breakdown = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { breakdown = {}; }
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { createDietRecord } = await import('../src/services/animalService.js?v=13');
+    const { createDietRecord } = await import('../src/services/animalService.js?v=14');
 
     const dietData = {
       animal_id: animalId,
@@ -1806,7 +1807,7 @@ App.Views = (() => {
   async function renderWeightTab(container, animal) {
     let weights = [];
     try {
-      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=13');
+      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=14');
       weights = await getRecordsByAnimal('weights', animal.id);
     } catch (err) {
       UI.showToast('Error al sincronizar pesos desde la base de datos: ' + err.message, 'error');
@@ -1951,7 +1952,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=13');
+    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=14');
     
     let records = [];
     let animalMap = {};
@@ -2062,7 +2063,7 @@ App.Views = (() => {
   }
 
   async function openTrainingForm(animalId, deptId, recordId = null) {
-    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
+    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
 
     const isEdit = !!recordId;
     let defaults = { date: H.today(), result: 'Excelente', behavior: '', observations: '', numero_sesion: 1, animal_id: animalId || '' };
@@ -2214,7 +2215,7 @@ App.Views = (() => {
     const section = H.getSectionMeta(type);
     let existingData = {};
 
-    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=13');
+    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=14');
 
     if (isEdit) {
       existingData = await getRecordById(type, recordId) || {};
@@ -2275,7 +2276,7 @@ App.Views = (() => {
       return;
     }
 
-    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=13');
+    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=14');
     UI.showConfirm(
       `¿Estás seguro de eliminar este registro de ${section.name} en Supabase?`,
       async () => {
@@ -2299,7 +2300,7 @@ App.Views = (() => {
     const isEdit = !!animalId;
     let existingData = {};
 
-    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=13');
+    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=14');
 
     if (isEdit) {
       try {
@@ -2385,7 +2386,7 @@ App.Views = (() => {
   }
 
   async function deleteAnimal(animalId) {
-    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=13');
+    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=14');
 
     let animal;
     try {
@@ -2428,7 +2429,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=13');
+    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
     
     let animalMap = {};
     let animalAvatars = {};
@@ -2575,6 +2576,174 @@ App.Views = (() => {
     UI.initHeaderInteractions();
   }
 
+  // ──────────────────────────────────────────────────────────
+  // DIETAS GENERALES (DASHBOARD)
+  // ──────────────────────────────────────────────────────────
+  async function renderGlobalDietsDashboard(params) {
+    const { deptId } = params;
+    const dept = H.getDeptMeta(deptId);
+    const app = document.getElementById('app');
+
+    const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
+    
+    let animalMap = {};
+    let animalAvatars = {};
+    let animalSpecies = {};
+    let dietsData = [];
+
+    try {
+      const records = await getAllDietRecords(deptId);
+      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      
+      for (const a of (animals || [])) {
+        animalMap[a.id] = a.nombre;
+        animalSpecies[a.id] = a.especie;
+        animalAvatars[a.id] = a.foto_url || await App.Photos.getPhotoUrl(a.id, a.especie);
+        
+        // Find diets for this animal
+        const animalDiets = records.filter(r => r.animal_id === a.id);
+        
+        if (animalDiets.length > 0) {
+          const latest = animalDiets[0];
+          const previous = animalDiets.length > 1 ? animalDiets[1] : null;
+          
+          let trend = 'same'; // same, up, down
+          let trendDiff = 0;
+          let latestQty = parseFloat(latest.dieta_total || latest.quantity);
+          let previousQty = previous ? parseFloat(previous.dieta_total || previous.quantity) : null;
+
+          if (!isNaN(latestQty) && previousQty !== null && !isNaN(previousQty)) {
+            trendDiff = (latestQty - previousQty);
+            if (trendDiff > 0) trend = 'up';
+            else if (trendDiff < 0) trend = 'down';
+          } else {
+            trendDiff = null;
+          }
+
+          let displayFood = deptId === 'leones' ? (latest.dieta_total ? latest.dieta_total + ' kg (Total)' : '—') : (latest.quantity ? latest.quantity + ' (' + latest.food_type + ')' : latest.food_type);
+
+          dietsData.push({
+            animalId: a.id,
+            name: a.nombre,
+            species: a.especie,
+            avatar: animalAvatars[a.id],
+            latestFood: displayFood,
+            date: latest.date,
+            trend: trend,
+            trendDiff: trendDiff,
+            observations: latest.observations,
+            totalRecords: animalDiets.length
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando dietas globales:', err);
+    }
+
+    // Ordenar por nombre de animal
+    dietsData.sort((a, b) => a.name.localeCompare(b.name));
+
+    const getTrendBadge = (trend, diff) => {
+      if (diff === null) return '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>';
+      if (trend === 'up') return `<span class="badge" style="background:#ecfdf5;color:#059669;gap:4px;">↗ ${Math.abs(diff).toFixed(2)}</span>`;
+      if (trend === 'down') return `<span class="badge" style="background:#fef2f2;color:#dc2626;gap:4px;">↘ ${Math.abs(diff).toFixed(2)}</span>`;
+      if (trend === 'same') return `<span class="badge" style="background:#f1f5f9;color:#64748b;gap:4px;">— 0</span>`;
+      return '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>';
+    };
+
+    let tableHtml = '';
+    if (dietsData.length === 0) {
+      tableHtml = `
+        <div style="text-align:center; padding: 3rem; color:var(--gray-500);">
+          <div style="font-size:3rem; margin-bottom:1rem;">🐟</div>
+          <p>No hay registros de dieta todavía para este departamento.</p>
+        </div>`;
+    } else {
+      const rows = dietsData.map(data => {
+        return `
+          <tr>
+            <td style="padding:12px 16px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:10px; overflow:hidden; background:var(--gray-100); flex-shrink:0;">
+                  <img src="${data.avatar}" alt="${data.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='${H.getDefaultPhotoSvg(data.species)}'">
+                </div>
+                <div>
+                  <div style="font-weight:600; color:var(--gray-900); font-size:0.95rem;">${data.name}</div>
+                  <div style="font-size:0.75rem; color:var(--gray-500);">${data.species}</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:12px 16px; font-weight:700; color:var(--gray-800); font-size:1.05rem;">
+              ${data.latestFood || '—'}
+            </td>
+            <td style="padding:12px 16px; font-size:0.85rem; color:var(--gray-600);">
+              ${H.formatDate(data.date)}
+            </td>
+            <td style="padding:12px 16px;">
+              ${getTrendBadge(data.trend, data.trendDiff)}
+            </td>
+            <td style="padding:12px 16px; font-size:0.85rem; color:var(--gray-600); max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${H.escapeHtml(data.observations || '—')}
+            </td>
+            <td style="padding:12px 16px; text-align:right;">
+              <button class="btn btn-ghost" onclick="App.Router.navigate('/animal/${data.animalId}/diets')" style="font-size:0.85rem; padding:6px 12px; height:auto; color:var(--primary-600); font-weight:600; background:var(--primary-50);">
+                Historial (${data.totalRecords}) ➔
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tableHtml = `
+        <div class="table-container">
+          <table class="table" style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--gray-200); background:var(--gray-50);">
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500); width:250px;">Animal</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Última Dieta</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Fecha</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Tendencia</th>
+                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500);">Observaciones</th>
+                <th style="padding:12px 16px; text-align:right; font-size:0.75rem; text-transform:uppercase; color:var(--gray-500); width:150px;">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // Leones Marinos uses openDietAnimalSelector, other depts might just use openDeptRecordForm('diets')
+    let createBtnAction = deptId === 'leones' 
+      ? `App.Views.openDietAnimalSelector('${deptId}')`
+      : `App.Views.openDeptRecordForm('diets', '${deptId}')`;
+
+    app.innerHTML = `
+      ${UI.renderHeader(`${dept.name} — Dietas (Dashboard)`, `/dept/${deptId}`)}
+      ${UI.renderBreadcrumbs([
+        { label: 'Inicio', path: '/menu' },
+        { label: dept.name, path: `/dept/${deptId}` },
+        { label: 'Dietas (Dashboard)' },
+      ])}
+      <main class="main-content">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <h2>🐟 Dashboard de Dietas — ${dept.name}</h2>
+          <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
+        </div>
+        
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-body" style="padding:0;">
+            ${tableHtml}
+          </div>
+        </div>
+      </main>
+    `;
+
+    UI.initHeaderInteractions();
+  }
+
   // ── Dept Record Form (with animal selector) ───────────────
   
   async function openDietAnimalSelector(deptId) {
@@ -2595,7 +2764,7 @@ App.Views = (() => {
     if (modalSaveBtn) modalSaveBtn.disabled = true;
 
     try {
-      const { getAnimals } = await import('../src/services/animalService.js?v=13');
+      const { getAnimals } = await import('../src/services/animalService.js?v=14');
       const animalsResult = await getAnimals({ departamentoId: deptId });
       const animals = animalsResult?.data || [];
 
@@ -2648,7 +2817,7 @@ App.Views = (() => {
   }
 
   async function openDeptRecordForm(type, deptId) {
-    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=13');
+    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=14');
 
     let animalsResult;
     try {
@@ -2787,7 +2956,7 @@ App.Views = (() => {
   }
 
   async function renderHealthTab(container, animal) {
-    const { getHealthEvents } = await import('../src/services/animalService.js?v=13');
+    const { getHealthEvents } = await import('../src/services/animalService.js?v=14');
 
     let events = [];
     try {
@@ -2946,7 +3115,7 @@ App.Views = (() => {
   }
 
   async function openHealthEventForm(animalId, eventId = null) {
-    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=13');
+    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=14');
 
     let defaults = {
       event_type: 'Tos',
@@ -3049,7 +3218,7 @@ App.Views = (() => {
   async function deleteHealthEvent(eventId, animalId) {
     if (!confirm('¿Eliminar este evento de salud?')) return;
 
-    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=13');
+    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=14');
     try {
       await delFn(eventId);
       UI.showToast('Evento eliminado', 'success');
