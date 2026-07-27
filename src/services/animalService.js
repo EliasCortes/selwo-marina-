@@ -705,3 +705,119 @@ export async function getAllWeightRecords(departamentoId = null) {
   }));
 }
 
+// ─────────────────────────────────────────────────────────────
+//  TRAINING SESSIONS — Tabla training_sessions (Libro diario)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene sesiones de entrenamiento de un animal.
+ * Ordenadas por fecha DESC, session_number ASC.
+ */
+export async function getTrainingSessions(animalId, limit = 200) {
+  const { data, error } = await supabase
+    .from("training_sessions")
+    .select("*")
+    .eq("animal_id", animalId)
+    .order("session_date", { ascending: false })
+    .order("session_number", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Obtiene todas las sesiones de entrenamiento de un departamento.
+ */
+export async function getTrainingSessionsByDept(deptId) {
+  const { data: animals, error: animalsErr } = await supabase
+    .from("animales")
+    .select("id")
+    .eq("departamento_id", deptId);
+
+  if (animalsErr) throw animalsErr;
+  if (!animals || animals.length === 0) return [];
+
+  const animalIds = animals.map(a => a.id);
+
+  const { data, error } = await supabase
+    .from("training_sessions")
+    .select("*")
+    .in("animal_id", animalIds)
+    .order("session_date", { ascending: false })
+    .order("session_number", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Crea múltiples sesiones de un día (bulk insert).
+ * @param {string} animalId
+ * @param {string} sessionDate - YYYY-MM-DD
+ * @param {Array} sessions - [{attitude, trainer, enrichment, notes}]
+ */
+export async function createTrainingSessions(animalId, sessionDate, sessions) {
+  const rows = sessions.map((s, i) => ({
+    animal_id: animalId,
+    session_date: sessionDate,
+    session_number: i + 1,
+    attitude: s.attitude || 'Bueno',
+    trainer: s.trainer || null,
+    enrichment: s.enrichment || null,
+    notes: s.notes || null,
+  }));
+
+  const { data, error } = await supabase
+    .from("training_sessions")
+    .insert(rows)
+    .select();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Actualiza una sesión de entrenamiento individual.
+ */
+export async function updateTrainingSession(sessionId, updates) {
+  const { data, error } = await supabase
+    .from("training_sessions")
+    .update({
+      attitude: updates.attitude,
+      trainer: updates.trainer,
+      enrichment: updates.enrichment,
+      notes: updates.notes,
+    })
+    .eq("id", sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Elimina una sesión individual.
+ */
+export async function deleteTrainingSession(sessionId) {
+  const { error } = await supabase
+    .from("training_sessions")
+    .delete()
+    .eq("id", sessionId);
+
+  if (error) throw error;
+}
+
+/**
+ * Elimina todas las sesiones de un día para un animal.
+ */
+export async function deleteTrainingDay(animalId, sessionDate) {
+  const { error } = await supabase
+    .from("training_sessions")
+    .delete()
+    .eq("animal_id", animalId)
+    .eq("session_date", sessionDate);
+
+  if (error) throw error;
+}

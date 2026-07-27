@@ -116,7 +116,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalsCount } = await import('../src/services/animalService.js?v=14');
+    const { getAnimalsCount } = await import('../src/services/animalService.js?v=15');
 
     // Get animal counts per department from Supabase
     const counts = {};
@@ -265,7 +265,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimals } = await import('../src/services/animalService.js?v=14');
+    const { getAnimals } = await import('../src/services/animalService.js?v=15');
 
     // Obtener los animales reales de Supabase
     let dbAnimals = [];
@@ -390,7 +390,7 @@ App.Views = (() => {
 
     // ── Dietas y Pesos: leer directamente de Supabase ─────────────
     if (sectionId === 'diets' || sectionId === 'weights') {
-      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
+      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
       try {
         if (sectionId === 'diets') {
           records = await getAllDietRecords(deptId);
@@ -536,7 +536,7 @@ App.Views = (() => {
     const { animalId, tab = 'general' } = params;
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalById } = await import('../src/services/animalService.js?v=14');
+    const { getAnimalById } = await import('../src/services/animalService.js?v=15');
 
     let dbAnimal = null;
     let errorMsg = '';
@@ -657,7 +657,7 @@ App.Views = (() => {
           await renderDietTab(container, animal);
         }
         break;
-      case 'trainings': await renderRecordTab(container, animal, 'trainings'); break;
+      case 'trainings': await renderTrainingTab(container, animal); break;
       case 'weights': await renderWeightTab(container, animal); break;
       case 'enrichments': await renderRecordTab(container, animal, 'enrichments'); break;
       case 'veterinary': await renderVetTab(container, animal); break;
@@ -750,7 +750,7 @@ App.Views = (() => {
   async function renderLeonesDietTab(container, animal) {
     const {
       getDietRecords, getLatestDietRecord, getDietRecordsByDateRange, createDietRecord
-    } = await import('../src/services/animalService.js?v=14');
+    } = await import('../src/services/animalService.js?v=15');
 
     const records = await getDietRecords(animal.id, 100);
     const latest = records.length > 0 ? records[0] : null;
@@ -1030,7 +1030,7 @@ App.Views = (() => {
 
     if (leonesDietChart) { leonesDietChart.destroy(); leonesDietChart = null; }
 
-    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=14');
+    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=15');
 
     let records;
     if (rangeDays === 0) {
@@ -1127,7 +1127,7 @@ App.Views = (() => {
   }
 
   async function openLeonesDietForm(animalId, deptId, recordId = null, copyPrevious = false) {
-    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=14');
+    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=15');
 
     App.Views.currentDietExtras = [];
     App.Views.currentDietSessions = [];
@@ -1431,7 +1431,7 @@ App.Views = (() => {
   // ── Diet Tab (Detailed Fish Breakdown + Chart) ─────────────
   async function renderDietTab(container, animal) {
     // Leer dietas desde Supabase en lugar de IndexedDB
-    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=14');
+    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=15');
     let records = [];
     try {
       records = await getRecordsByAnimal('diets', animal.id);
@@ -1625,7 +1625,7 @@ App.Views = (() => {
     try { breakdown = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { breakdown = {}; }
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { createDietRecord } = await import('../src/services/animalService.js?v=14');
+    const { createDietRecord } = await import('../src/services/animalService.js?v=15');
 
     const dietData = {
       animal_id: animalId,
@@ -1807,7 +1807,7 @@ App.Views = (() => {
   async function renderWeightTab(container, animal) {
     let weights = [];
     try {
-      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=14');
+      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=15');
       weights = await getRecordsByAnimal('weights', animal.id);
     } catch (err) {
       UI.showToast('Error al sincronizar pesos desde la base de datos: ' + err.message, 'error');
@@ -1952,7 +1952,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=14');
+    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=15');
     
     let records = [];
     let animalMap = {};
@@ -2062,8 +2062,299 @@ App.Views = (() => {
     `;
   }
 
+  // ──────────────────────────────────────────────────────────
+  // PESTAÑA DE ENTRENAMIENTOS — Libro Diario de Sesiones
+  // ──────────────────────────────────────────────────────────
+
+  const ATTITUDE_MAP = {
+    'Excelente': { bg: '#dcfce7', color: '#16a34a', emoji: '✨' },
+    'Bueno':     { bg: '#fef9c3', color: '#ca8a04', emoji: '🟢' },
+    'Regular':   { bg: '#ffedd5', color: '#ea580c', emoji: '🟡' },
+    'Mal':       { bg: '#fee2e2', color: '#dc2626', emoji: '🔴' },
+  };
+
+  function getAttitudeBadgeHtml(attitude) {
+    const m = ATTITUDE_MAP[attitude] || { bg: '#f1f5f9', color: '#64748b', emoji: '📝' };
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;background:${m.bg};color:${m.color};">${m.emoji} ${attitude}</span>`;
+  }
+
+  async function renderTrainingTab(container, animal) {
+    const { getTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+
+    let sessions = [];
+    try {
+      sessions = await getTrainingSessions(animal.id, 200);
+    } catch (err) {
+      console.error('Error cargando sesiones de entrenamiento:', err);
+    }
+
+    // Agrupar por session_date
+    const grouped = {};
+    sessions.forEach(s => {
+      const dateKey = s.session_date;
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      grouped[dateKey].push(s);
+    });
+
+    const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+    // Build attitude summary for today
+    const todayStr = H.today();
+    const todaySessions = grouped[todayStr] || [];
+    const totalToday = todaySessions.length;
+    const attCounts = { 'Excelente': 0, 'Bueno': 0, 'Regular': 0, 'Mal': 0 };
+    todaySessions.forEach(s => { if (attCounts[s.attitude] !== undefined) attCounts[s.attitude]++; });
+
+    const summaryHtml = `
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:var(--sp-5);">
+        <div style="background:var(--primary-50);padding:16px;border-radius:12px;text-align:center;">
+          <div style="font-size:1.8rem;font-weight:800;color:var(--primary-600);">${totalToday}</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:4px;">📋 Sesiones Hoy</div>
+        </div>
+        <div style="background:#dcfce7;padding:16px;border-radius:12px;text-align:center;">
+          <div style="font-size:1.8rem;font-weight:800;color:#16a34a;">${attCounts['Excelente']}</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:4px;">✨ Excelente</div>
+        </div>
+        <div style="background:#fef9c3;padding:16px;border-radius:12px;text-align:center;">
+          <div style="font-size:1.8rem;font-weight:800;color:#ca8a04;">${attCounts['Bueno']}</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:4px;">🟢 Bueno</div>
+        </div>
+        <div style="background:#ffedd5;padding:16px;border-radius:12px;text-align:center;">
+          <div style="font-size:1.8rem;font-weight:800;color:#ea580c;">${attCounts['Regular']}</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:4px;">🟡 Regular</div>
+        </div>
+        <div style="background:#fee2e2;padding:16px;border-radius:12px;text-align:center;">
+          <div style="font-size:1.8rem;font-weight:800;color:#dc2626;">${attCounts['Mal']}</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-top:4px;">🔴 Mal</div>
+        </div>
+      </div>
+    `;
+
+    // Build day blocks
+    let historyHtml = '';
+    if (sortedDates.length === 0) {
+      historyHtml = `
+        <div style="text-align:center; padding:3rem; color:var(--gray-500);">
+          <div style="font-size:3rem; margin-bottom:1rem;">🎯</div>
+          <p>No hay sesiones de entrenamiento registradas.</p>
+          <p style="font-size:0.85rem; margin-top:0.5rem;">Pulsa "+ Nuevo Día" para empezar.</p>
+        </div>`;
+    } else {
+      sortedDates.forEach(dateStr => {
+        const daySessions = grouped[dateStr];
+        const isToday = dateStr === todayStr;
+        const dateLabel = isToday ? `Hoy — ${H.formatDate(dateStr)}` : H.formatDate(dateStr);
+
+        const sessionsCardsHtml = daySessions.map(s => `
+          <div style="display:flex; align-items:flex-start; gap:12px; padding:12px; background:var(--gray-50); border-radius:10px; border-left:4px solid ${(ATTITUDE_MAP[s.attitude] || {color:'#94a3b8'}).color};">
+            <div style="min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--primary-100);color:var(--primary-700);font-weight:800;font-size:0.85rem;">
+              ${s.session_number}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+                ${getAttitudeBadgeHtml(s.attitude)}
+                ${s.trainer ? `<span style="font-size:0.8rem;color:var(--gray-600);">👤 ${H.escapeHtml(s.trainer)}</span>` : ''}
+                ${s.enrichment ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;background:#e0e7ff;color:#4338ca;">🧩 ${H.escapeHtml(s.enrichment)}</span>` : ''}
+              </div>
+              ${s.notes ? `<p style="font-size:0.85rem;color:var(--gray-700);margin:4px 0 0;line-height:1.4;">${H.escapeHtml(s.notes)}</p>` : ''}
+            </div>
+          </div>
+        `).join('');
+
+        historyHtml += `
+          <div class="card" style="margin-bottom:var(--sp-4);">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <div>
+                <h3 style="margin:0;font-size:1rem;">📅 ${dateLabel}</h3>
+                <span style="font-size:0.8rem;color:var(--gray-500);">${daySessions.length} sesión${daySessions.length > 1 ? 'es' : ''}</span>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-outline btn-sm" onclick="App.Views.openTrainingDayForm('${animal.id}', '${dateStr}')" title="Editar día">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="App.Views.deleteTrainingDayConfirm('${animal.id}', '${dateStr}')" title="Eliminar día">🗑️</button>
+              </div>
+            </div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+              ${sessionsCardsHtml}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    container.innerHTML = `
+      <div class="card" style="margin-bottom:var(--sp-4);">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h3>🎯 Libro de Entrenamientos</h3>
+          <button class="btn btn-primary btn-sm" onclick="App.Views.openTrainingDayForm('${animal.id}')">+ Nuevo Día</button>
+        </div>
+        <div class="card-body">
+          ${summaryHtml}
+        </div>
+      </div>
+      ${historyHtml}
+    `;
+  }
+
+  // ── Delete Training Day Confirm ──────────────────────────
+  async function deleteTrainingDayConfirm(animalId, sessionDate) {
+    UI.showConfirm(
+      `¿Eliminar TODAS las sesiones del día ${H.formatDate(sessionDate)}? Esta acción no se puede deshacer.`,
+      async () => {
+        try {
+          const { deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+          await deleteTrainingDay(animalId, sessionDate);
+          UI.showToast('Día de entrenamiento eliminado', 'success');
+          App.Router.resolve();
+        } catch (err) {
+          UI.showToast('Error: ' + err.message, 'error');
+        }
+      },
+      'Eliminar Día'
+    );
+  }
+
+  // ── Training Day Form (Multi-session) ────────────────────
+  async function openTrainingDayForm(animalId, editDate = null) {
+    const { getTrainingSessions, createTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+
+    const isEdit = !!editDate;
+    let existingSessions = [];
+
+    if (isEdit) {
+      try {
+        const all = await getTrainingSessions(animalId, 200);
+        existingSessions = all.filter(s => s.session_date === editDate);
+      } catch (err) {
+        console.error('Error cargando sesiones para editar:', err);
+      }
+    }
+
+    const defaultCount = isEdit ? Math.max(existingSessions.length, 4) : 4;
+    const dateValue = editDate || H.today();
+
+    const ATTITUDES = [
+      { value: 'Excelente', emoji: '✨', label: 'Excelente' },
+      { value: 'Bueno', emoji: '🟢', label: 'Bueno' },
+      { value: 'Regular', emoji: '🟡', label: 'Regular' },
+      { value: 'Mal', emoji: '🔴', label: 'Mal' },
+    ];
+
+    function buildSessionBlock(index, data = {}) {
+      const attOptions = ATTITUDES.map(a =>
+        `<option value="${a.value}" ${(data.attitude || 'Bueno') === a.value ? 'selected' : ''}>${a.emoji} ${a.label}</option>`
+      ).join('');
+
+      return `
+        <div class="training-session-block" data-session-index="${index}" style="background:var(--gray-50);border-radius:12px;padding:16px;border-left:4px solid var(--primary-400);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span style="font-weight:700;color:var(--primary-700);font-size:0.9rem;">Sesión ${index + 1}</span>
+            ${index >= 4 ? `<button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.training-session-block').remove()" style="padding:2px 8px;font-size:0.75rem;">✕</button>` : ''}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-size:0.8rem;">Actitud</label>
+              <select class="form-select ts-attitude" style="font-size:0.85rem;">${attOptions}</select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-size:0.8rem;">Entrenador</label>
+              <input class="form-input ts-trainer" type="text" value="${H.escapeHtml(data.trainer || '')}" placeholder="Ej: Manu" style="font-size:0.85rem;">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px;margin-bottom:0;">
+            <label class="form-label" style="font-size:0.8rem;">Enriquecimiento</label>
+            <input class="form-input ts-enrichment" type="text" value="${H.escapeHtml(data.enrichment || '')}" placeholder="Ej: Sí — bola de hielo" style="font-size:0.85rem;">
+          </div>
+          <div class="form-group" style="margin-top:10px;margin-bottom:0;">
+            <label class="form-label" style="font-size:0.8rem;">Observaciones</label>
+            <textarea class="form-textarea ts-notes" rows="2" placeholder="Qué se trabajó en esta sesión..." style="font-size:0.85rem;">${H.escapeHtml(data.notes || '')}</textarea>
+          </div>
+        </div>
+      `;
+    }
+
+    let initialBlocks = '';
+    for (let i = 0; i < defaultCount; i++) {
+      const data = existingSessions[i] || {};
+      initialBlocks += buildSessionBlock(i, data);
+    }
+
+    const formHtml = `
+      <form id="training-day-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="ts-date">Fecha *</label>
+          <input class="form-input" type="date" id="ts-date" value="${dateValue}" required ${isEdit ? 'readonly' : ''}>
+        </div>
+        <div id="ts-sessions-container" style="display:flex;flex-direction:column;gap:12px;margin-top:var(--sp-3);">
+          ${initialBlocks}
+        </div>
+        <button type="button" id="ts-add-session-btn" style="margin-top:12px;width:100%;padding:10px;border:2px dashed var(--primary-300);border-radius:10px;background:transparent;color:var(--primary-600);font-weight:600;cursor:pointer;font-size:0.9rem;transition:background 0.2s;" 
+          onmouseover="this.style.background='var(--primary-50)'" 
+          onmouseout="this.style.background='transparent'">
+          + Añadir Sesión
+        </button>
+      </form>
+    `;
+
+    UI.showModal({
+      title: isEdit ? `📝 Editar Día — ${H.formatDate(editDate)}` : '+ Nuevo Día de Entrenamiento',
+      contentHtml: formHtml,
+      saveLabel: isEdit ? 'Actualizar' : 'Guardar',
+      onSave: async () => {
+        const fecha = document.getElementById('ts-date')?.value;
+        if (!fecha) { UI.showToast('La fecha es obligatoria', 'error'); return; }
+
+        const blocks = document.querySelectorAll('.training-session-block');
+        const sessionsData = [];
+
+        blocks.forEach(block => {
+          const attitude = block.querySelector('.ts-attitude')?.value || 'Bueno';
+          const trainer = block.querySelector('.ts-trainer')?.value?.trim() || '';
+          const enrichment = block.querySelector('.ts-enrichment')?.value?.trim() || '';
+          const notes = block.querySelector('.ts-notes')?.value?.trim() || '';
+
+          // Only include sessions that have at least some data filled
+          if (attitude || trainer || enrichment || notes) {
+            sessionsData.push({ attitude, trainer, enrichment, notes });
+          }
+        });
+
+        if (sessionsData.length === 0) {
+          UI.showToast('Debes rellenar al menos una sesión', 'error');
+          return;
+        }
+
+        try {
+          // If editing, delete old sessions first then re-insert
+          if (isEdit) {
+            await deleteTrainingDay(animalId, editDate);
+          }
+          await createTrainingSessions(animalId, fecha, sessionsData);
+          UI.showToast(isEdit ? 'Día actualizado correctamente' : `${sessionsData.length} sesiones guardadas`, 'success');
+          UI.closeModal();
+          App.Router.resolve();
+        } catch (err) {
+          UI.showToast('Error: ' + err.message, 'error');
+        }
+      },
+    });
+
+    // Attach add session button
+    setTimeout(() => {
+      const addBtn = document.getElementById('ts-add-session-btn');
+      const containerEl = document.getElementById('ts-sessions-container');
+      if (addBtn && containerEl) {
+        addBtn.addEventListener('click', () => {
+          const currentCount = containerEl.querySelectorAll('.training-session-block').length;
+          const div = document.createElement('div');
+          div.innerHTML = buildSessionBlock(currentCount, {});
+          containerEl.appendChild(div.firstElementChild);
+        });
+      }
+    }, 100);
+  }
+
   async function openTrainingForm(animalId, deptId, recordId = null) {
-    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
+    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
 
     const isEdit = !!recordId;
     let defaults = { date: H.today(), result: 'Excelente', behavior: '', observations: '', numero_sesion: 1, animal_id: animalId || '' };
@@ -2215,7 +2506,7 @@ App.Views = (() => {
     const section = H.getSectionMeta(type);
     let existingData = {};
 
-    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=14');
+    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=15');
 
     if (isEdit) {
       existingData = await getRecordById(type, recordId) || {};
@@ -2276,7 +2567,7 @@ App.Views = (() => {
       return;
     }
 
-    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=14');
+    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=15');
     UI.showConfirm(
       `¿Estás seguro de eliminar este registro de ${section.name} en Supabase?`,
       async () => {
@@ -2300,7 +2591,7 @@ App.Views = (() => {
     const isEdit = !!animalId;
     let existingData = {};
 
-    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=14');
+    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=15');
 
     if (isEdit) {
       try {
@@ -2386,7 +2677,7 @@ App.Views = (() => {
   }
 
   async function deleteAnimal(animalId) {
-    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=14');
+    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=15');
 
     let animal;
     try {
@@ -2429,7 +2720,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
+    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
     
     let animalMap = {};
     let animalAvatars = {};
@@ -2584,7 +2875,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=14');
+    const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
     
     let animalMap = {};
     let animalAvatars = {};
@@ -2764,7 +3055,7 @@ App.Views = (() => {
     if (modalSaveBtn) modalSaveBtn.disabled = true;
 
     try {
-      const { getAnimals } = await import('../src/services/animalService.js?v=14');
+      const { getAnimals } = await import('../src/services/animalService.js?v=15');
       const animalsResult = await getAnimals({ departamentoId: deptId });
       const animals = animalsResult?.data || [];
 
@@ -2817,7 +3108,7 @@ App.Views = (() => {
   }
 
   async function openDeptRecordForm(type, deptId) {
-    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=14');
+    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=15');
 
     let animalsResult;
     try {
@@ -2956,7 +3247,7 @@ App.Views = (() => {
   }
 
   async function renderHealthTab(container, animal) {
-    const { getHealthEvents } = await import('../src/services/animalService.js?v=14');
+    const { getHealthEvents } = await import('../src/services/animalService.js?v=15');
 
     let events = [];
     try {
@@ -3115,7 +3406,7 @@ App.Views = (() => {
   }
 
   async function openHealthEventForm(animalId, eventId = null) {
-    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=14');
+    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=15');
 
     let defaults = {
       event_type: 'Tos',
@@ -3218,7 +3509,7 @@ App.Views = (() => {
   async function deleteHealthEvent(eventId, animalId) {
     if (!confirm('¿Eliminar este evento de salud?')) return;
 
-    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=14');
+    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=15');
     try {
       await delFn(eventId);
       UI.showToast('Evento eliminado', 'success');
@@ -3241,6 +3532,8 @@ App.Views = (() => {
     renderWeightChart,
     openRecordForm,
     openTrainingForm,
+    openTrainingDayForm,
+    deleteTrainingDayConfirm,
     deleteRecord,
     openAnimalForm,
     deleteAnimal,
