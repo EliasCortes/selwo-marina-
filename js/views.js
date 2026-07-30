@@ -116,7 +116,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalsCount } = await import('../src/services/animalService.js?v=15');
+    const { getAnimalsCount } = await import('../src/services/animalService.js?v=16');
 
     // Get animal counts per department from Supabase
     const counts = {};
@@ -265,7 +265,7 @@ App.Views = (() => {
     const app = document.getElementById('app');
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimals } = await import('../src/services/animalService.js?v=15');
+    const { getAnimals } = await import('../src/services/animalService.js?v=16');
 
     // Obtener los animales reales de Supabase
     let dbAnimals = [];
@@ -382,6 +382,7 @@ App.Views = (() => {
     if (sectionId === 'trainings') { return renderGlobalTrainingView(params); }
     if (sectionId === 'weights') { return renderGlobalWeightsDashboard(params); }
     if (sectionId === 'diets') { return renderGlobalDietsDashboard(params); }
+    if (sectionId === 'enrichments') { return renderGlobalEnrichmentsDashboard(params); }
 
     const app = document.getElementById('app');
     let records;
@@ -390,7 +391,7 @@ App.Views = (() => {
 
     // ── Dietas y Pesos: leer directamente de Supabase ─────────────
     if (sectionId === 'diets' || sectionId === 'weights') {
-      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
+      const { getAllDietRecords, getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=16');
       try {
         if (sectionId === 'diets') {
           records = await getAllDietRecords(deptId);
@@ -536,7 +537,7 @@ App.Views = (() => {
     const { animalId, tab = 'general' } = params;
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { getAnimalById } = await import('../src/services/animalService.js?v=15');
+    const { getAnimalById } = await import('../src/services/animalService.js?v=16');
 
     let dbAnimal = null;
     let errorMsg = '';
@@ -659,7 +660,7 @@ App.Views = (() => {
         break;
       case 'trainings': await renderTrainingTab(container, animal); break;
       case 'weights': await renderWeightTab(container, animal); break;
-      case 'enrichments': await renderRecordTab(container, animal, 'enrichments'); break;
+      case 'enrichments': await renderEnrichmentsTab(container, animal); break;
       case 'veterinary': await renderVetTab(container, animal); break;
       case 'health': await renderHealthTab(container, animal); break;
       default: container.innerHTML = renderGeneralTab(animal);
@@ -750,7 +751,7 @@ App.Views = (() => {
   async function renderLeonesDietTab(container, animal) {
     const {
       getDietRecords, getLatestDietRecord, getDietRecordsByDateRange, createDietRecord
-    } = await import('../src/services/animalService.js?v=15');
+    } = await import('../src/services/animalService.js?v=16');
 
     const records = await getDietRecords(animal.id, 100);
     const latest = records.length > 0 ? records[0] : null;
@@ -1030,7 +1031,7 @@ App.Views = (() => {
 
     if (leonesDietChart) { leonesDietChart.destroy(); leonesDietChart = null; }
 
-    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=15');
+    const { getDietRecordsByDateRange, getDietRecords } = await import('../src/services/animalService.js?v=16');
 
     let records;
     if (rangeDays === 0) {
@@ -1132,7 +1133,7 @@ App.Views = (() => {
   }
 
   async function openLeonesDietForm(animalId, deptId, recordId = null, copyPrevious = false) {
-    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=15');
+    const { getLatestDietRecord, createDietRecord, updateDietRecord, getRecordById } = await import('../src/services/animalService.js?v=16');
 
     App.Views.currentDietExtras = [];
     App.Views.currentDietSessions = [];
@@ -1436,7 +1437,7 @@ App.Views = (() => {
   // ── Diet Tab (Detailed Fish Breakdown + Chart) ─────────────
   async function renderDietTab(container, animal) {
     // Leer dietas desde Supabase en lugar de IndexedDB
-    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=15');
+    const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=16');
     let records = [];
     try {
       records = await getRecordsByAnimal('diets', animal.id);
@@ -1630,7 +1631,7 @@ App.Views = (() => {
     try { breakdown = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { breakdown = {}; }
 
     // Cargar dinámicamente el servicio de animales de Supabase
-    const { createDietRecord } = await import('../src/services/animalService.js?v=15');
+    const { createDietRecord } = await import('../src/services/animalService.js?v=16');
 
     const dietData = {
       animal_id: animalId,
@@ -1812,7 +1813,7 @@ App.Views = (() => {
   async function renderWeightTab(container, animal) {
     let weights = [];
     try {
-      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=15');
+      const { getRecordsByAnimal } = await import('../src/services/animalService.js?v=16');
       weights = await getRecordsByAnimal('weights', animal.id);
     } catch (err) {
       UI.showToast('Error al sincronizar pesos desde la base de datos: ' + err.message, 'error');
@@ -1961,91 +1962,41 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getTrainingRecordsByDept, getAnimals } = await import('../src/services/animalService.js?v=15');
+    const { getAnimals } = await import('../src/services/animalService.js?v=16');
     
-    let records = [];
-    let animalMap = {};
-    let animalAvatars = {};
-
+    let animals = [];
     try {
-      records = await getTrainingRecordsByDept(deptId);
-      const { data: animals } = await getAnimals({ departamentoId: deptId });
-      
-      for (const a of (animals || [])) {
-        animalMap[a.id] = a.nombre;
-        animalAvatars[a.id] = a.foto_url || await App.Photos.getPhotoUrl(a.id, a.especie);
-      }
+      const { data } = await getAnimals({ departamentoId: deptId });
+      animals = data || [];
     } catch (err) {
-      console.error('Error cargando entrenamientos globales:', err);
+      console.error('Error cargando animales:', err);
+      UI.showToast('Error cargando animales', 'error');
     }
 
-    const ATTITUDE_ICONS = {
-      'Excelente': '✨',
-      'Bueno': '🟢',
-      'Regular': '🟡',
-      'Mal': '🟠',
-      'Muy Mal': '🔴'
-    };
+    const cards = [];
+    for (const animal of animals) {
+      const photoUrl = animal.foto_url || await App.Photos.getPhotoUrl(animal.id, animal.especie);
+      const targetUrl = `/animal/${animal.id}/trainings`;
 
-    const getAttitudeBadge = (attitude) => {
-      const clsMap = {
-        'Excelente': 'success',
-        'Bueno': 'primary',
-        'Regular': 'warning',
-        'Mal': 'danger',
-        'Muy Mal': 'danger'
-      };
-      const cls = clsMap[attitude] || 'default';
-      const icon = ATTITUDE_ICONS[attitude] || '📝';
-      return `<span class="badge badge-${cls}">${icon} ${attitude}</span>`;
-    };
-
-    const todayStr = H.today();
-    const todayRecords = records.filter(r => r.fecha === todayStr);
-    
-    const attitudeCounts = { 'Excelente': 0, 'Bueno': 0, 'Regular': 0, 'Mal': 0, 'Muy Mal': 0 };
-    todayRecords.forEach(r => {
-      if (attitudeCounts[r.resultado] !== undefined) {
-        attitudeCounts[r.resultado]++;
-      }
-    });
-
-    const summaryHtml = `
-      <div class="training-summary-cards">
-        <div class="training-summary-item training-summary-item--total">
-          <div class="training-summary-value">${todayRecords.length}</div>
-          <div class="training-summary-label">📋 Sesiones Hoy</div>
-        </div>
-        <div class="training-summary-item training-summary-item--excelente">
-          <div class="training-summary-value">${attitudeCounts['Excelente']}</div>
-          <div class="training-summary-label">✨ Excelente</div>
-        </div>
-        <div class="training-summary-item training-summary-item--regular">
-          <div class="training-summary-value">${attitudeCounts['Regular']}</div>
-          <div class="training-summary-label">🟡 Regular</div>
-        </div>
-        <div class="training-summary-item training-summary-item--mal">
-          <div class="training-summary-value">${attitudeCounts['Mal'] + attitudeCounts['Muy Mal']}</div>
-          <div class="training-summary-label">🔴 Mala / Muy Mala</div>
-        </div>
-      </div>
-    `;
-
-    const recentRecords = records.slice(0, 10);
-    const listHtml = recentRecords.length > 0 ? recentRecords.map(r => `
-      <div class="modern-session-list-item" onclick="App.Router.navigate('/animal/${r.animal_id}/trainings')" style="cursor:pointer">
-        <div class="msl-animal">
-          <img src="${animalAvatars[r.animal_id]}" alt="" class="msl-avatar">
-          <div class="msl-info">
-            <span class="msl-name">${H.escapeHtml(animalMap[r.animal_id] || 'Desconocido')}</span>
-            <span class="msl-meta">${H.formatDateTime(r.fecha)} (Sesión ${r.numero_sesion || 1}) — ${H.escapeHtml(r.conducta_entrenada || 'Sin entrenador')}</span>
+      cards.push(`
+        <div class="animal-card" onclick="App.Router.navigate('${targetUrl}')" role="button" tabindex="0">
+          <div class="animal-avatar">
+            <img src="${photoUrl}" alt="${H.escapeHtml(animal.nombre)}" loading="lazy" style="object-fit: cover; object-position: center 20%;">
+          </div>
+          <div class="animal-info" style="display:flex; flex-direction:column; justify-content:space-between; flex:1;">
+            <div>
+              <div class="animal-name">${H.escapeHtml(animal.nombre)}</div>
+              <div class="animal-species">${H.escapeHtml(animal.especie)}</div>
+            </div>
+            <div style="margin-top: 12px;">
+              <button class="btn btn-primary btn-sm" style="width:100%;">📖 Ver Libro de Entrenamientos</button>
+            </div>
           </div>
         </div>
-        <div class="msl-attitude">
-          ${getAttitudeBadge(r.resultado)}
-        </div>
-      </div>
-    `).join('') : '<p class="text-muted text-center" style="padding: 2rem;">No hay sesiones registradas.</p>';
+      `);
+    }
+
+    const cardsHtml = cards.length > 0 ? cards.join('') : '<p class="text-muted" style="grid-column:1/-1;">No hay animales en este departamento.</p>';
 
     app.innerHTML = `
       ${UI.renderHeader(`${dept.name} · Entrenamientos`, `/dept/${deptId}`)}
@@ -2056,19 +2007,16 @@ App.Views = (() => {
     ])}
       <main class="main-content">
         <div class="modern-training-header">
-          <h2 class="modern-training-title">🎯 Entrenamientos - Vista General</h2>
-          <button class="btn btn-primary" onclick="App.Views.openTrainingForm(null, '${deptId}')">+ Nuevo Entrenamiento</button>
+          <h2 class="modern-training-title">🎯 Selecciona un Animal</h2>
         </div>
         
-        <h3 style="margin-top:2rem;margin-bottom:1rem;color:var(--gray-700);font-size:1.1rem;">Resumen de Hoy (${H.formatDateTime(todayStr)})</h3>
-        ${summaryHtml}
-
-        <h3 style="margin-top:2rem;margin-bottom:1rem;color:var(--gray-700);font-size:1.1rem;">Últimas Sesiones Registradas</h3>
-        <div class="modern-session-list">
-          ${listHtml}
+        <div class="animal-grid" style="margin-top:2rem;">
+          ${cardsHtml}
         </div>
       </main>
     `;
+
+    UI.initHeaderInteractions();
   }
 
   // ──────────────────────────────────────────────────────────
@@ -2088,7 +2036,7 @@ App.Views = (() => {
   }
 
   async function renderTrainingTab(container, animal) {
-    const { getTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+    const { getTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=16');
 
     let sessions = [];
     try {
@@ -2210,7 +2158,7 @@ App.Views = (() => {
       `¿Eliminar TODAS las sesiones del día ${H.formatDate(sessionDate)}? Esta acción no se puede deshacer.`,
       async () => {
         try {
-          const { deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+          const { deleteTrainingDay } = await import('../src/services/animalService.js?v=16');
           await deleteTrainingDay(animalId, sessionDate);
           UI.showToast('Día de entrenamiento eliminado', 'success');
           App.Router.resolve();
@@ -2224,7 +2172,7 @@ App.Views = (() => {
 
   // ── Training Day Form (Multi-session) ────────────────────
   async function openTrainingDayForm(animalId, editDate = null) {
-    const { getTrainingSessions, createTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=15');
+    const { getTrainingSessions, createTrainingSessions, deleteTrainingDay } = await import('../src/services/animalService.js?v=16');
 
     const isEdit = !!editDate;
     let existingSessions = [];
@@ -2249,15 +2197,15 @@ App.Views = (() => {
     ];
 
     function buildSessionBlock(index, data = {}) {
-      const attOptions = ATTITUDES.map(a =>
-        `<option value="${a.value}" ${(data.attitude || 'Bueno') === a.value ? 'selected' : ''}>${a.emoji} ${a.label}</option>`
+      const attOptions = `<option value="">- Seleccionar -</option>` + ATTITUDES.map(a =>
+        `<option value="${a.value}" ${(data.attitude === a.value) ? 'selected' : ''}>${a.emoji} ${a.label}</option>`
       ).join('');
 
       return `
         <div class="training-session-block" data-session-index="${index}" style="background:var(--gray-50);border-radius:12px;padding:16px;border-left:4px solid var(--primary-400);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <span style="font-weight:700;color:var(--primary-700);font-size:0.9rem;">Sesión ${index + 1}</span>
-            ${index >= 4 ? `<button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.training-session-block').remove()" style="padding:2px 8px;font-size:0.75rem;">✕</button>` : ''}
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.training-session-block').remove()" style="padding:2px 8px;font-size:0.75rem;">✕</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
             <div class="form-group" style="margin-bottom:0;">
@@ -2317,7 +2265,7 @@ App.Views = (() => {
         const sessionsData = [];
 
         blocks.forEach(block => {
-          const attitude = block.querySelector('.ts-attitude')?.value || 'Bueno';
+          const attitude = block.querySelector('.ts-attitude')?.value || '';
           const trainer = block.querySelector('.ts-trainer')?.value?.trim() || '';
           const enrichment = block.querySelector('.ts-enrichment')?.value?.trim() || '';
           const notes = block.querySelector('.ts-notes')?.value?.trim() || '';
@@ -2364,7 +2312,7 @@ App.Views = (() => {
   }
 
   async function openTrainingForm(animalId, deptId, recordId = null) {
-    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
+    const { getRecordById, createSupabaseRecord, updateSupabaseRecord, getTrainingRecords, getAnimals } = await import('../src/services/animalService.js?v=16');
 
     const isEdit = !!recordId;
     let defaults = { date: H.today(), result: 'Excelente', behavior: '', observations: '', numero_sesion: 1, animal_id: animalId || '' };
@@ -2516,7 +2464,7 @@ App.Views = (() => {
     const section = H.getSectionMeta(type);
     let existingData = {};
 
-    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=15');
+    const { getRecordById, updateSupabaseRecord, createSupabaseRecord } = await import('../src/services/animalService.js?v=16');
 
     if (isEdit) {
       existingData = await getRecordById(type, recordId) || {};
@@ -2577,7 +2525,7 @@ App.Views = (() => {
       return;
     }
 
-    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=15');
+    const { deleteSupabaseRecord } = await import('../src/services/animalService.js?v=16');
     UI.showConfirm(
       `¿Estás seguro de eliminar este registro de ${section.name} en Supabase?`,
       async () => {
@@ -2601,7 +2549,7 @@ App.Views = (() => {
     const isEdit = !!animalId;
     let existingData = {};
 
-    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=15');
+    const { getAnimalById, createAnimal, updateAnimal, uploadAnimalPhoto } = await import('../src/services/animalService.js?v=16');
 
     if (isEdit) {
       try {
@@ -2687,7 +2635,7 @@ App.Views = (() => {
   }
 
   async function deleteAnimal(animalId) {
-    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=15');
+    const { getAnimalById, deleteAnimal: deleteSupabaseAnimal } = await import('../src/services/animalService.js?v=16');
 
     let animal;
     try {
@@ -2730,7 +2678,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
+    const { getAllWeightRecords, getAnimals } = await import('../src/services/animalService.js?v=16');
     
     let animalMap = {};
     let animalAvatars = {};
@@ -2885,7 +2833,7 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
-    const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=15');
+    const { getAllDietRecords, getAnimals } = await import('../src/services/animalService.js?v=16');
     
     let animalMap = {};
     let animalAvatars = {};
@@ -3066,7 +3014,7 @@ App.Views = (() => {
     if (modalSaveBtn) modalSaveBtn.disabled = true;
 
     try {
-      const { getAnimals } = await import('../src/services/animalService.js?v=15');
+      const { getAnimals } = await import('../src/services/animalService.js?v=16');
       const animalsResult = await getAnimals({ departamentoId: deptId });
       const animals = animalsResult?.data || [];
 
@@ -3119,7 +3067,7 @@ App.Views = (() => {
   }
 
   async function openDeptRecordForm(type, deptId) {
-    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=15');
+    const { getAnimals, createSupabaseRecord } = await import('../src/services/animalService.js?v=16');
 
     let animalsResult;
     try {
@@ -3258,7 +3206,7 @@ App.Views = (() => {
   }
 
   async function renderHealthTab(container, animal) {
-    const { getHealthEvents } = await import('../src/services/animalService.js?v=15');
+    const { getHealthEvents } = await import('../src/services/animalService.js?v=16');
 
     let events = [];
     try {
@@ -3417,7 +3365,7 @@ App.Views = (() => {
   }
 
   async function openHealthEventForm(animalId, eventId = null) {
-    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=15');
+    const { getHealthEvents, createHealthEvent, updateHealthEvent } = await import('../src/services/animalService.js?v=16');
 
     let defaults = {
       event_type: 'Tos',
@@ -3520,13 +3468,145 @@ App.Views = (() => {
   async function deleteHealthEvent(eventId, animalId) {
     if (!confirm('¿Eliminar este evento de salud?')) return;
 
-    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=15');
+    const { deleteHealthEvent: delFn } = await import('../src/services/animalService.js?v=16');
     try {
       await delFn(eventId);
       UI.showToast('Evento eliminado', 'success');
       App.Router.resolve();
     } catch (err) {
       UI.showToast('Error: ' + err.message, 'error');
+    }
+  }
+
+  // ── Enrichments Tab ───────────────────────────────────────
+  async function renderEnrichmentsTab(container, animal) {
+    const { getEnrichmentsByAnimal } = await import('../src/services/animalService.js?v=16');
+    
+    let records = [];
+    try {
+      records = await getEnrichmentsByAnimal(animal.id);
+    } catch (e) {
+      console.error('Error loading enrichments', e);
+    }
+
+    const html = `
+      <div class="card">
+        <div class="card-header">
+          <h3>🧩 Enriquecimientos</h3>
+          <p class="text-sm text-muted">Se registran automáticamente al añadir una Sesión de Entreno con enriquecimiento.</p>
+        </div>
+        <div class="card-body">
+          ${records.length === 0 ? '<p class="text-muted">No hay enriquecimientos registrados para este animal.</p>' : `
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo de Enriquecimiento</th>
+                    <th>Sesión</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${records.map(r => {
+                    const match = r.observaciones?.match(/^Sesión (\d+)(?::\s*(.*))?$/);
+                    const sesion = match ? match[1] : '—';
+                    const obs = match ? (match[2] || '—') : (r.observaciones || '—');
+                    return `
+                    <tr>
+                      <td>${H.formatDate(r.fecha)}</td>
+                      <td>${H.escapeHtml(r.tipo_enriquecimiento || '—')}</td>
+                      <td>${sesion}</td>
+                      <td>${H.escapeHtml(obs)}</td>
+                    </tr>
+                    `
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  // ── Global Enrichments Dashboard ──────────────────────────────
+  async function renderGlobalEnrichmentsDashboard(params) {
+    const { deptId } = params;
+    const dept = H.getDeptMeta(deptId);
+    const app = document.getElementById('app');
+
+    app.innerHTML = `
+      ${UI.renderHeader(`${dept.name} — Enriquecimientos`, `/dept/${deptId}`)}
+      ${UI.renderBreadcrumbs([
+        { label: 'Inicio', path: '/menu' },
+        { label: dept.name, path: `/dept/${deptId}` },
+        { label: 'Enriquecimientos' },
+      ])}
+      <main class="main-content">
+        <div class="page-header">
+          <h2 class="modern-training-title">🧩 Enriquecimientos - Vista General</h2>
+          <p class="text-sm text-muted" style="margin-top: 4px;">Mostrando registros procedentes de las sesiones de entreno.</p>
+        </div>
+        <div id="global-enrichments-container">
+          <div style="padding:40px;text-align:center;">Cargando registros...</div>
+        </div>
+      </main>
+    `;
+
+    try {
+      const { getEnrichmentsByDept, getAnimals } = await import('../src/services/animalService.js?v=16');
+      const records = await getEnrichmentsByDept(deptId);
+      
+      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      const animalMap = {};
+      (animals || []).forEach(a => animalMap[a.id] = a.nombre);
+
+      const container = document.getElementById('global-enrichments-container');
+      if (records.length === 0) {
+        container.innerHTML = '<p class="text-muted">No hay enriquecimientos registrados en este departamento.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Animal</th>
+                    <th>Tipo de Enriquecimiento</th>
+                    <th>Sesión</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${records.map(r => {
+                    const match = r.observaciones?.match(/^Sesión (\d+)(?::\s*(.*))?$/);
+                    const sesion = match ? match[1] : '—';
+                    const obs = match ? (match[2] || '—') : (r.observaciones || '—');
+                    return `
+                    <tr>
+                      <td>${H.formatDate(r.fecha)}</td>
+                      <td><strong>${H.escapeHtml(animalMap[r.animal_id] || 'Desconocido')}</strong></td>
+                      <td>${H.escapeHtml(r.tipo_enriquecimiento || '—')}</td>
+                      <td>${sesion}</td>
+                      <td>${H.escapeHtml(obs)}</td>
+                    </tr>
+                    `
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      console.error('Error loading global enrichments:', err);
+      document.getElementById('global-enrichments-container').innerHTML = '<p class="text-danger">Error cargando enriquecimientos.</p>';
     }
   }
 

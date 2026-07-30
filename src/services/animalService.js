@@ -762,7 +762,7 @@ export async function createTrainingSessions(animalId, sessionDate, sessions) {
     animal_id: animalId,
     session_date: sessionDate,
     session_number: i + 1,
-    attitude: s.attitude || 'Bueno',
+    attitude: s.attitude || null,
     trainer: s.trainer || null,
     enrichment: s.enrichment || null,
     notes: s.notes || null,
@@ -774,6 +774,28 @@ export async function createTrainingSessions(animalId, sessionDate, sessions) {
     .select();
 
   if (error) throw error;
+
+  // Sincronizar enriquecimientos
+  const enrichmentRows = sessions
+    .map((s, i) => ({
+      animal_id: animalId,
+      fecha: sessionDate,
+      tipo_enriquecimiento: s.enrichment?.trim() || null,
+      observaciones: s.notes ? `Sesión ${i + 1}: ${s.notes}` : `Sesión ${i + 1}`,
+    }))
+    .filter(r => r.tipo_enriquecimiento);
+
+  if (enrichmentRows.length > 0) {
+    const { error: enrichErr } = await supabase
+      .from("enriquecimientos")
+      .insert(enrichmentRows);
+      
+    if (enrichErr) {
+      console.error("Error guardando enriquecimiento vinculado:", enrichErr);
+      alert("Error guardando enriquecimiento en base de datos. Detalles: " + (enrichErr.message || JSON.stringify(enrichErr)));
+    }
+  }
+
   return data;
 }
 
@@ -820,4 +842,58 @@ export async function deleteTrainingDay(animalId, sessionDate) {
     .eq("session_date", sessionDate);
 
   if (error) throw error;
+
+  // Eliminar también los enriquecimientos asociados a ese día para evitar duplicados
+  const { error: enrichErr } = await supabase
+    .from("enriquecimientos")
+    .delete()
+    .eq("animal_id", animalId)
+    .eq("fecha", sessionDate);
+    
+  if (enrichErr) console.error("Error eliminando enriquecimientos asociados:", enrichErr);
+}
+
+// ────────────────────────────────────────────────────────────
+//  ENRIQUECIMIENTOS
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene enriquecimientos de un animal.
+ */
+export async function getEnrichmentsByAnimal(animalId, limit = 200) {
+  const { data, error } = await supabase
+    .from("enriquecimientos")
+    .select("*")
+    .eq("animal_id", animalId)
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Obtiene todos los enriquecimientos de un departamento.
+ */
+export async function getEnrichmentsByDept(deptId) {
+  const { data: animals, error: animalsErr } = await supabase
+    .from("animales")
+    .select("id")
+    .eq("departamento_id", deptId);
+
+  if (animalsErr) throw animalsErr;
+  if (!animals || animals.length === 0) return [];
+
+  const animalIds = animals.map(a => a.id);
+
+  const { data, error } = await supabase
+    .from("enriquecimientos")
+    .select("*")
+    .in("animal_id", animalIds)
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }
