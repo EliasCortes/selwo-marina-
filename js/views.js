@@ -1078,6 +1078,9 @@ App.Views = (() => {
       }
     }
 
+    const maxVal = data.length > 0 ? Math.max(0, ...data.filter(d => d !== null)) : 0;
+    const yMax = Math.ceil((maxVal || 10) * 1.15);
+
     leonesDietChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -1117,6 +1120,8 @@ App.Views = (() => {
         scales: {
           x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, maxRotation: 45 } },
           y: {
+            min: 0,
+            max: yMax,
             grid: { color: 'rgba(0,0,0,0.04)' },
             ticks: { font: { family: 'Inter', size: 11 }, callback: (v) => v + ' kg' },
           },
@@ -1899,6 +1904,8 @@ App.Views = (() => {
     const labels = weights.map(w => H.formatDate(w.date));
     const data = weights.map(w => unit === 'g' ? w.weight_kg * 1000 : w.weight_kg);
     const unitLabel = unit === 'g' ? 'g' : 'kg';
+    const maxVal = data.length > 0 ? Math.max(0, ...data.filter(d => d !== null)) : 0;
+    const yMax = Math.ceil((maxVal || 10) * 1.15);
 
     weightChart = new Chart(ctx, {
       type: 'line',
@@ -1933,6 +1940,8 @@ App.Views = (() => {
         scales: {
           x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } },
           y: {
+            min: 0,
+            max: yMax,
             grid: { color: 'rgba(0,0,0,0.05)' },
             ticks: { font: { family: 'Inter', size: 11 }, callback: (v) => v + ' ' + unitLabel },
           },
@@ -2250,7 +2259,7 @@ App.Views = (() => {
             <span style="font-weight:700;color:var(--primary-700);font-size:0.9rem;">Sesión ${index + 1}</span>
             ${index >= 4 ? `<button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.training-session-block').remove()" style="padding:2px 8px;font-size:0.75rem;">✕</button>` : ''}
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label" style="font-size:0.8rem;">Actitud</label>
               <select class="form-select ts-attitude" style="font-size:0.85rem;">${attOptions}</select>
@@ -2259,14 +2268,14 @@ App.Views = (() => {
               <label class="form-label" style="font-size:0.8rem;">Entrenador</label>
               <input class="form-input ts-trainer" type="text" value="${H.escapeHtml(data.trainer || '')}" placeholder="Ej: Manu" style="font-size:0.85rem;">
             </div>
-          </div>
-          <div class="form-group" style="margin-top:10px;margin-bottom:0;">
-            <label class="form-label" style="font-size:0.8rem;">Enriquecimiento</label>
-            <input class="form-input ts-enrichment" type="text" value="${H.escapeHtml(data.enrichment || '')}" placeholder="Ej: Sí — bola de hielo" style="font-size:0.85rem;">
-          </div>
-          <div class="form-group" style="margin-top:10px;margin-bottom:0;">
-            <label class="form-label" style="font-size:0.8rem;">Observaciones</label>
-            <textarea class="form-textarea ts-notes" rows="2" placeholder="Qué se trabajó en esta sesión..." style="font-size:0.85rem;">${H.escapeHtml(data.notes || '')}</textarea>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-size:0.8rem;">Enriquecimiento</label>
+              <input class="form-input ts-enrichment" type="text" value="${H.escapeHtml(data.enrichment || '')}" placeholder="Ej: Sí — bola de hielo" style="font-size:0.85rem;">
+            </div>
+            <div class="form-group" style="margin-bottom:0; grid-column: 1 / -1;">
+              <label class="form-label" style="font-size:0.8rem;">Observaciones</label>
+              <textarea class="form-textarea ts-notes" rows="1" placeholder="Qué se trabajó en esta sesión..." style="font-size:0.85rem;">${H.escapeHtml(data.notes || '')}</textarea>
+            </div>
           </div>
         </div>
       `;
@@ -2299,6 +2308,7 @@ App.Views = (() => {
       title: isEdit ? `📝 Editar Día — ${H.formatDate(editDate)}` : '+ Nuevo Día de Entrenamiento',
       contentHtml: formHtml,
       saveLabel: isEdit ? 'Actualizar' : 'Guardar',
+      modalClass: 'modal-xl',
       onSave: async () => {
         const fecha = document.getElementById('ts-date')?.value;
         if (!fecha) { UI.showToast('La fecha es obligatoria', 'error'); return; }
@@ -2802,7 +2812,7 @@ App.Views = (() => {
               </div>
             </td>
             <td style="padding:12px 16px; font-weight:700; color:var(--gray-800); font-size:1.05rem;">
-              ${data.latestWeight ? data.latestWeight + ' kg' : '—'}
+              ${data.latestWeight ? parseFloat(Number(data.latestWeight).toFixed(2)) + ' kg' : '—'}
             </td>
             <td style="padding:12px 16px; font-size:0.85rem; color:var(--gray-600);">
               ${H.formatDate(data.date)}
@@ -2911,7 +2921,8 @@ App.Views = (() => {
             trendDiff = null;
           }
 
-          let displayFood = deptId === 'leones' ? (latest.dieta_total ? latest.dieta_total + ' kg (Total)' : '—') : (latest.quantity ? latest.quantity + ' (' + latest.food_type + ')' : latest.food_type);
+          const fmtVal = val => val ? parseFloat(Number(val).toFixed(2)) : val;
+          let displayFood = deptId === 'leones' ? (latest.dieta_total ? fmtVal(latest.dieta_total) + ' kg (Total)' : '—') : (latest.quantity ? fmtVal(latest.quantity) + ' (' + latest.food_type + ')' : latest.food_type);
 
           dietsData.push({
             animalId: a.id,

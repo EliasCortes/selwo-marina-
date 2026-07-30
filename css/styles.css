@@ -583,7 +583,8 @@ h4 { font-size: var(--fs-lg); }
 }
 .modal-lg { max-width: 720px; }
 .modal-xl { max-width: 960px; }
-.modal-header h3 { font-size: var(--fs-lg); color: var(--gray-900); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--gray-100); }
+.modal-header h3 { font-size: var(--fs-lg); color: var(--gray-900); margin: 0; }
 .modal-close {
   width: 32px; height: 32px; border: none;
   background: var(--gray-100); border-radius: var(--radius-md);
