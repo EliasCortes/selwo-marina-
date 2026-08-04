@@ -79,6 +79,10 @@ window.App = window.App || {};
     // Department view
     Router.add('/dept/:deptId', (params) => Views.renderDepartment(params));
 
+    // Fish management & Defrost calculator
+    Router.add('/fish-management', (params) => (App.FishManagement || App.Views.FishManagement).render(params));
+    Router.add('/dept/:deptId/fish-management', (params) => (App.FishManagement || App.Views.FishManagement).render(params));
+
     // Department section (animals, diets, etc.)
     Router.add('/dept/:deptId/:sectionId', (params) => Views.renderDeptSection(params));
 

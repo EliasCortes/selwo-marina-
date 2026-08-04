@@ -246,6 +246,7 @@ App.Helpers = (() => {
   const SECTIONS = [
     { id: 'animals', name: 'Animales', icon: '🐾' },
     { id: 'diets', name: 'Dietas', icon: '🍽️' },
+    { id: 'fish-management', name: 'Pescado & Descongelación', icon: '🐟' },
     { id: 'trainings', name: 'Entrenos', icon: '🎯' },
     { id: 'weights', name: 'Pesos', icon: '⚖️' },
     { id: 'enrichments', name: 'Enriquecimientos', icon: '🧩' },

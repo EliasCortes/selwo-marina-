@@ -897,3 +897,9 @@ export async function getEnrichmentsByDept(deptId) {
   if (error) throw error;
   return data || [];
 }
+
+// ─────────────────────────────────────────────────────────────
+//  PESCADO Y DESCONGELACIÓN — Módulo de gestión de consumo
+// ─────────────────────────────────────────────────────────────
+export { getFishConsumptionSummary, FISH_DEFINITIONS } from "./fishService.js?v=1";
+

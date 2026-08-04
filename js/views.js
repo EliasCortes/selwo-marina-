@@ -48,6 +48,10 @@ App.Views = (() => {
       <path d="M7 2v20"/>
       <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
     </svg>`,
+    'fish-management': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-card-svg">
+      <path d="M6.5 12c.94-2.07 3.08-3.5 5.5-3.5s4.56 1.43 5.5 3.5c-.94 2.07-3.08 3.5-5.5 3.5s-4.56-1.43-5.5-3.5z"/>
+      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+    </svg>`,
     trainings: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-card-svg">
       <circle cx="12" cy="12" r="10"/>
       <circle cx="12" cy="12" r="6"/>
@@ -174,6 +178,10 @@ App.Views = (() => {
             <span class="menu-extra-icon">⭐</span>
             <span class="menu-extra-label">Favoritos</span>
             ${favCount > 0 ? `<span class="menu-extra-count">${favCount}</span>` : ''}
+          </button>
+          <button class="menu-extra-btn" onclick="App.Router.navigate('/fish-management')">
+            <span class="menu-extra-icon">🐟</span>
+            <span class="menu-extra-label">Pescado & Descongelación</span>
           </button>
         </div>
 
@@ -382,6 +390,7 @@ App.Views = (() => {
     if (sectionId === 'trainings') { return renderGlobalTrainingView(params); }
     if (sectionId === 'weights') { return renderGlobalWeightsDashboard(params); }
     if (sectionId === 'diets') { return renderGlobalDietsDashboard(params); }
+    if (sectionId === 'fish-management') { return (App.FishManagement || App.Views.FishManagement).render(params); }
     if (sectionId === 'enrichments') { return renderGlobalEnrichmentsDashboard(params); }
 
     const app = document.getElementById('app');
@@ -1290,6 +1299,7 @@ App.Views = (() => {
             UI.showToast('Dieta registrada correctamente', 'success');
           }
           UI.closeModal();
+          window.dispatchEvent(new CustomEvent('selwo:diet-updated'));
           App.Router.resolve();
         } catch (err) {
           if (err.message?.includes('duplicate') || err.code === '23505') {
@@ -2978,9 +2988,12 @@ App.Views = (() => {
         { label: 'Dietas (Dashboard)' },
       ])}
       <main class="main-content">
-        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>🐟 Dashboard de Dietas — ${dept.name}</h2>
-          <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-outline" onclick="App.Router.navigate('/dept/${deptId}/fish-management')">🐟 Pedidos y Descongelación</button>
+            <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
+          </div>
         </div>
         
         <div class="card" style="margin-top:var(--sp-4);">
@@ -3653,6 +3666,8 @@ App.Views = (() => {
     openDietAnimalSelector,
     openHealthEventForm,
     deleteHealthEvent,
+    renderFishManagement: (params) => (App.FishManagement || App.Views.FishManagement).render(params),
+    FishManagement: App.FishManagement,
     currentDietExtras: [],
     currentDietSessions: [],
   };
