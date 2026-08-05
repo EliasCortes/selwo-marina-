@@ -21,7 +21,12 @@ App.FishManagement = (() => {
    */
   async function render(params = {}) {
     if (params.deptId) {
-      currentDeptFilter = params.deptId;
+      const d = String(params.deptId).toLowerCase();
+      if (['delfines', 'mamiferos', 'mamiferos-marinos'].includes(d)) {
+        currentDeptFilter = 'leones';
+      } else {
+        currentDeptFilter = params.deptId;
+      }
     }
 
     const app = document.getElementById('app');
@@ -41,10 +46,23 @@ App.FishManagement = (() => {
               <h2 class="fish-title">🐟 Proyección de Pedidos y Descongelación</h2>
               <p class="fish-subtitle">Cálculo dinámico en tiempo real basado únicamente en dietas activas del parque.</p>
             </div>
-            <div class="fish-actions">
-              <button class="btn btn-outline" onclick="App.Views.FishManagement.exportCSV()">
-                <span>📊 Exportar CSV</span>
-              </button>
+            <div class="fish-actions" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+              <div class="dropdown-export" style="position:relative; display:inline-block;">
+                <button class="btn btn-outline" onclick="App.Views.FishManagement.toggleExportMenu(event)">
+                  <span>📊 Exportar ▾</span>
+                </button>
+                <div id="fish-export-menu" class="card shadow-md" style="display:none; position:absolute; right:0; top:110%; z-index:100; min-width:210px; padding:0.5rem; background:var(--surface-card); border:1px solid var(--gray-200); border-radius:var(--radius-md);">
+                  <button class="btn btn-sm btn-ghost" style="width:100%; text-align:left; justify-content:flex-start; margin-bottom:4px;" onclick="App.Views.FishManagement.exportExcel()">
+                    📊 Exportar Excel (.xlsx)
+                  </button>
+                  <button class="btn btn-sm btn-ghost" style="width:100%; text-align:left; justify-content:flex-start; margin-bottom:4px;" onclick="App.Views.FishManagement.exportText()">
+                    📄 Exportar Texto / Word (.txt)
+                  </button>
+                  <button class="btn btn-sm btn-ghost" style="width:100%; text-align:left; justify-content:flex-start;" onclick="App.Views.FishManagement.exportCSV()">
+                    📋 Exportar CSV (.csv)
+                  </button>
+                </div>
+              </div>
               <button class="btn btn-primary" onclick="window.print()">
                 <span>🖨️ Imprimir Order List</span>
               </button>
@@ -56,10 +74,8 @@ App.FishManagement = (() => {
               <label for="fish-dept-filter" class="fish-filter-label">Departamento:</label>
               <select id="fish-dept-filter" class="form-select" onchange="App.Views.FishManagement.onDeptChange(this.value)">
                 <option value="all" ${currentDeptFilter === 'all' ? 'selected' : ''}>🌐 Todo el Parque (Global)</option>
-                <option value="leones" ${currentDeptFilter === 'leones' ? 'selected' : ''}>🦭 Mamíferos Marinos (Leones)</option>
-                <option value="delfines" ${currentDeptFilter === 'delfines' ? 'selected' : ''}>🐬 Delfines</option>
+                <option value="leones" ${currentDeptFilter === 'leones' ? 'selected' : ''}>🦭 Mamíferos Marinos</option>
                 <option value="pinguinario" ${currentDeptFilter === 'pinguinario' ? 'selected' : ''}>🐧 Pingüinario</option>
-                <option value="aves" ${currentDeptFilter === 'aves' ? 'selected' : ''}>🦜 Aves / Amazónicos</option>
               </select>
             </div>
 
@@ -233,9 +249,17 @@ App.FishManagement = (() => {
             <h3 class="fish-panel-title">📋 Panel 2: Proyección de Consumo y Pedidos</h3>
             <p class="fish-panel-sub">Tabla interactiva de estimación de necesidades diarias, mensuales y anuales de materia prima.</p>
           </div>
-          <button class="btn btn-sm btn-outline" onclick="App.Views.FishManagement.exportCSV()">
-            📥 Descargar CSV
-          </button>
+          <div class="fish-export-buttons" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-outline" onclick="App.Views.FishManagement.exportExcel()" title="Descargar como hoja de cálculo de Excel">
+              📊 Excel (.xlsx)
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="App.Views.FishManagement.exportText()" title="Descargar como documento de texto o Word">
+              📄 Texto (.txt)
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="App.Views.FishManagement.exportCSV()" title="Descargar como valores separados por comas">
+              📋 CSV (.csv)
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -380,7 +404,167 @@ App.FishManagement = (() => {
   }
 
   /**
-   * Exporta la tabla de proyecciones a un archivo CSV descargable.
+   * Alterna la visibilidad del menú desplegable de exportación.
+   */
+  function toggleExportMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('fish-export-menu');
+    if (!menu) return;
+    const isVisible = menu.style.display === 'block';
+    menu.style.display = isVisible ? 'none' : 'block';
+  }
+
+  // Listener para cerrar el menú desplegable al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('fish-export-menu');
+    if (menu && menu.style.display === 'block' && !e.target.closest('.dropdown-export')) {
+      menu.style.display = 'none';
+    }
+  });
+
+  /**
+   * Helper genérico para descargar archivos Blob en el navegador.
+   */
+  function downloadBlob(content, mimeType, filename) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function getDeptExportName() {
+    const deptNameMap = {
+      all: 'Parque Global',
+      leones: 'Mamíferos Marinos',
+      pinguinario: 'Pingüinario'
+    };
+    return deptNameMap[currentDeptFilter] || currentDeptFilter.toUpperCase();
+  }
+
+  /**
+   * Exporta la tabla de proyecciones a un archivo Excel (.xlsx / HTML Table Excel).
+   */
+  function exportExcel() {
+    if (!fishData || !fishData.fishSummary || fishData.fishSummary.length === 0) {
+      UI.showToast('No hay datos para exportar', 'warning');
+      return;
+    }
+
+    const todayStr = getTodayKey();
+    const deptName = getDeptExportName();
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>Pescado ${H.escapeHtml(deptName)}</x:Name>
+        <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        <style>
+          body { font-family: sans-serif; }
+          th { background-color: #0a2647; color: #ffffff; font-weight: bold; border: 1px solid #041c2c; }
+          td, th { padding: 8px; border: 1px solid #ced4da; text-align: left; }
+          .num { text-align: right; mso-number-format: "0\.00"; }
+          .center { text-align: center; }
+          .title { font-size: 16px; font-weight: bold; background-color: #eaf2f8; color: #041c2c; }
+          .total { font-weight: bold; background-color: #f1f3f5; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr><td colspan="7" class="title">CONTROL ANIMAL SELWO MARINA - ORDEN DE DESCONGELACIÓN Y PEDIDO DE PESCADO</td></tr>
+          <tr><td colspan="7"><b>Departamento:</b> ${H.escapeHtml(deptName)} | <b>Fecha del Reporte:</b> ${new Date().toLocaleString()}</td></tr>
+          <tr><td colspan="7"></td></tr>
+          <tr>
+            <th>Tipo de Pescado</th>
+            <th>Consumo Diario (kg)</th>
+            <th>Est. Mensual (30d kg)</th>
+            <th>Est. Anual (365d kg)</th>
+            <th>Peso Caja (kg)</th>
+            <th>Cajas Estimadas / Día</th>
+            <th>Animales Destino</th>
+          </tr>
+          ${fishData.fishSummary.map(i => `
+            <tr>
+              <td>${H.escapeHtml(i.label)}</td>
+              <td class="num">${i.dailyKg.toFixed(2)}</td>
+              <td class="num">${i.monthlyKg.toFixed(2)}</td>
+              <td class="num">${i.annualKg.toFixed(2)}</td>
+              <td class="center">${i.defaultBoxKg}</td>
+              <td class="center">${i.boxesCount}</td>
+              <td>${H.escapeHtml(i.animalList.join(', '))}</td>
+            </tr>
+          `).join('')}
+          <tr class="total">
+            <td>TOTAL GLOBAL</td>
+            <td class="num">${fishData.grandTotals.dailyKg.toFixed(2)} kg</td>
+            <td class="num">${fishData.grandTotals.monthlyKg.toFixed(2)} kg</td>
+            <td class="num">${fishData.grandTotals.annualKg.toFixed(2)} kg</td>
+            <td class="center">-</td>
+            <td class="center">${fishData.grandTotals.totalBoxes} cajas</td>
+            <td>-</td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    downloadBlob('\uFEFF' + excelHtml, 'application/vnd.ms-excel;charset=utf-8;', `Orden_Descongelacion_Selwo_${currentDeptFilter}_${todayStr}.xlsx`);
+    UI.showToast('📊 Archivo Excel (.xlsx) exportado correctamente', 'success');
+  }
+
+  /**
+   * Exporta la orden de descongelación a un archivo de Texto / Word (.txt).
+   */
+  function exportText() {
+    if (!fishData || !fishData.fishSummary || fishData.fishSummary.length === 0) {
+      UI.showToast('No hay datos para exportar', 'warning');
+      return;
+    }
+
+    const todayStr = getTodayKey();
+    const deptName = getDeptExportName();
+
+    let text = `================================================================================\n`;
+    text += `CONTROL ANIMAL SELWO MARINA - ORDEN DE DESCONGELACIÓN Y PEDIDOS DE PESCADO\n`;
+    text += `================================================================================\n\n`;
+    text += `Departamento:      ${deptName}\n`;
+    text += `Fecha del Reporte: ${new Date().toLocaleString()}\n`;
+    text += `Animales Activos:  ${fishData.activeAnimalsCount}\n`;
+    text += `Dietas Vigentes:   ${fishData.dietsCount}\n\n`;
+    text += `--------------------------------------------------------------------------------\n`;
+    text += `RESUMEN DE CONSUMO DIARIO Y PROYECCIÓN\n`;
+    text += `--------------------------------------------------------------------------------\n\n`;
+
+    fishData.fishSummary.forEach(i => {
+      text += `• ${i.label.toUpperCase()}\n`;
+      text += `  - Consumo diario:     ${i.dailyKg.toFixed(2)} kg (${i.boxesCount} cajas de ${i.defaultBoxKg} kg)\n`;
+      text += `  - Estimación mensual: ${i.monthlyKg.toFixed(2)} kg (30 días)\n`;
+      text += `  - Estimación anual:   ${i.annualKg.toFixed(2)} kg (365 días)\n`;
+      text += `  - Animales asignados: ${i.animalList.join(', ')}\n\n`;
+    });
+
+    text += `================================================================================\n`;
+    text += `TOTALES GLOBALES DE DESCONGELACIÓN / PEDIDO\n`;
+    text += `================================================================================\n`;
+    text += `  - Total consumo diario:  ${fishData.grandTotals.dailyKg.toFixed(2)} kg / día\n`;
+    text += `  - Total cajas estimadas: ${fishData.grandTotals.totalBoxes} cajas / día\n`;
+    text += `  - Total mensual (30d):   ${fishData.grandTotals.monthlyKg.toFixed(2)} kg\n`;
+    text += `  - Total anual (365d):    ${fishData.grandTotals.annualKg.toFixed(2)} kg\n`;
+    text += `================================================================================\n`;
+
+    downloadBlob('\uFEFF' + text, 'text/plain;charset=utf-8;', `Orden_Descongelacion_Selwo_${currentDeptFilter}_${todayStr}.txt`);
+    UI.showToast('📄 Documento de texto (.txt) exportado correctamente', 'success');
+  }
+
+  /**
+   * Exporta la tabla de proyecciones a un archivo CSV descargable con BOM UTF-8.
    */
   function exportCSV() {
     if (!fishData || !fishData.fishSummary || fishData.fishSummary.length === 0) {
@@ -389,7 +573,7 @@ App.FishManagement = (() => {
     }
 
     const todayStr = getTodayKey();
-    const deptName = currentDeptFilter === 'all' ? 'Parque Global' : currentDeptFilter.toUpperCase();
+    const deptName = getDeptExportName();
 
     let csvContent = `Control Animal Selwo - Proyección de Pedido de Pescado (${deptName})\n`;
     csvContent += `Fecha del Reporte: ${new Date().toLocaleString()}\n\n`;
@@ -402,16 +586,8 @@ App.FishManagement = (() => {
 
     csvContent += `TOTAL GLOBAL,${fishData.grandTotals.dailyKg},${fishData.grandTotals.monthlyKg},${fishData.grandTotals.annualKg},-,${fishData.grandTotals.totalBoxes},-\n`;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Pedido_Pescado_Selwo_${currentDeptFilter}_${todayStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    UI.showToast('📥 CSV exportado correctamente', 'success');
+    downloadBlob('\uFEFF' + csvContent, 'text/csv;charset=utf-8;', `Orden_Descongelacion_Selwo_${currentDeptFilter}_${todayStr}.csv`);
+    UI.showToast('📋 CSV (.csv) exportado correctamente', 'success');
   }
 
   /**
@@ -431,6 +607,9 @@ App.FishManagement = (() => {
     onDeptChange,
     onBoxWeightChange,
     toggleDefrostStatus,
+    toggleExportMenu,
+    exportExcel,
+    exportText,
     exportCSV,
     refreshData: loadDataAndRenderPanels
   };

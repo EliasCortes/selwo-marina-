@@ -81,7 +81,20 @@ window.App = window.App || {};
 
     // Fish management & Defrost calculator
     Router.add('/fish-management', (params) => (App.FishManagement || App.Views.FishManagement).render(params));
-    Router.add('/dept/:deptId/fish-management', (params) => (App.FishManagement || App.Views.FishManagement).render(params));
+    Router.add('/dept/:deptId/fish-management', (params) => {
+      if (!App.Helpers.isFishDept(params.deptId)) {
+        Router.navigate(`/dept/${params.deptId}`);
+        return;
+      }
+      return (App.FishManagement || App.Views.FishManagement).render(params);
+    });
+    Router.add('/dept/:deptId/fish', (params) => {
+      if (!App.Helpers.isFishDept(params.deptId)) {
+        Router.navigate(`/dept/${params.deptId}`);
+        return;
+      }
+      return (App.FishManagement || App.Views.FishManagement).render(params);
+    });
 
     // Department section (animals, diets, etc.)
     Router.add('/dept/:deptId/:sectionId', (params) => Views.renderDeptSection(params));

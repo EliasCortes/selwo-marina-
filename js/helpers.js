@@ -242,6 +242,12 @@ App.Helpers = (() => {
     return DEPARTMENTS.find(d => d.id === deptId) || DEPARTMENTS[0];
   }
 
+  function isFishDept(deptId) {
+    if (!deptId) return false;
+    const id = String(deptId).toLowerCase();
+    return ['leones', 'pinguinario', 'pinguinos', 'delfines', 'mamiferos', 'mamiferos-marinos'].includes(id);
+  }
+
   // ── Section Metadata ──────────────────────────────────────
   const SECTIONS = [
     { id: 'animals', name: 'Animales', icon: '🐾' },
@@ -465,6 +471,7 @@ App.Helpers = (() => {
     debounce,
     DEPARTMENTS,
     getDeptMeta,
+    isFishDept,
     getDeptIcon,
     DEPT_ICONS,
     SECTIONS,

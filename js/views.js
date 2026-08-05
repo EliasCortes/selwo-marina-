@@ -250,15 +250,20 @@ App.Views = (() => {
           <h2>${dept.icon} ${dept.name}</h2>
         </div>
         <div class="dept-sections-grid">
-          ${H.SECTIONS.map(section => {
-      const iconHtml = SECTION_SVGS[section.id] || section.icon;
-      return `
+          ${H.SECTIONS.filter(section => {
+        if (section.id === 'fish-management') {
+          return H.isFishDept(deptId);
+        }
+        return true;
+      }).map(section => {
+        const iconHtml = SECTION_SVGS[section.id] || section.icon;
+        return `
               <div class="section-card" onclick="App.Router.navigate('/dept/${deptId}/${section.id}')" role="button" tabindex="0">
                 <span class="section-card-icon">${iconHtml}</span>
                 <span class="section-card-name">${section.name}</span>
               </div>
             `;
-    }).join('')}
+      }).join('')}
         </div>
       </main>
     `;
@@ -390,7 +395,13 @@ App.Views = (() => {
     if (sectionId === 'trainings') { return renderGlobalTrainingView(params); }
     if (sectionId === 'weights') { return renderGlobalWeightsDashboard(params); }
     if (sectionId === 'diets') { return renderGlobalDietsDashboard(params); }
-    if (sectionId === 'fish-management') { return (App.FishManagement || App.Views.FishManagement).render(params); }
+    if (sectionId === 'fish-management' || sectionId === 'fish') {
+      if (!H.isFishDept(deptId)) {
+        App.Router.navigate(`/dept/${deptId}`);
+        return;
+      }
+      return (App.FishManagement || App.Views.FishManagement).render(params);
+    }
     if (sectionId === 'enrichments') { return renderGlobalEnrichmentsDashboard(params); }
 
     const app = document.getElementById('app');
@@ -1989,7 +2000,7 @@ App.Views = (() => {
       const targetUrl = `/animal/${animal.id}/trainings`;
 
       cards.push(`
-        <div class="animal-card" onclick="App.Router.navigate('${targetUrl}')" role="button" tabindex="0">
+        <div class="animal-card" data-animal-name="${H.escapeHtml(animal.nombre)}" data-animal-species="${H.escapeHtml(animal.especie)}" onclick="App.Router.navigate('${targetUrl}')" role="button" tabindex="0">
           <div class="animal-avatar">
             <img src="${photoUrl}" alt="${H.escapeHtml(animal.nombre)}" loading="lazy" style="object-fit: cover; object-position: center 20%;">
           </div>
@@ -2007,6 +2018,7 @@ App.Views = (() => {
     }
 
     const cardsHtml = cards.length > 0 ? cards.join('') : '<p class="text-muted" style="grid-column:1/-1;">No hay animales en este departamento.</p>';
+    const speciesList = [...new Set(animals.map(a => a.especie).filter(Boolean))].sort();
 
     app.innerHTML = `
       ${UI.renderHeader(`${dept.name} · Entrenamientos`, `/dept/${deptId}`)}
@@ -2019,14 +2031,75 @@ App.Views = (() => {
         <div class="modern-training-header">
           <h2 class="modern-training-title">🎯 Selecciona un Animal</h2>
         </div>
-        
-        <div class="animal-grid" style="margin-top:2rem;">
+
+        ${UI.renderSearchBar({
+          searchId: 'training-search-input',
+          filterId: 'training-species-select',
+          placeholder: 'Buscar por nombre o especie...',
+          filterOptions: speciesList,
+          filterLabel: 'Todas las especies'
+        })}
+
+        <div class="animal-grid" id="training-animal-grid" style="margin-top:1.5rem;">
           ${cardsHtml}
         </div>
       </main>
     `;
 
     UI.initHeaderInteractions();
+
+    const normalizeText = str => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const searchInput = document.getElementById('training-search-input');
+    const speciesSelect = document.getElementById('training-species-select');
+
+    const performFilter = () => {
+      const query = searchInput ? searchInput.value.trim() : '';
+      const term = normalizeText(query);
+      const selectedSpecies = speciesSelect ? speciesSelect.value : '';
+
+      const grid = document.getElementById('training-animal-grid');
+      if (!grid) return;
+
+      const cardsList = grid.querySelectorAll('.animal-card');
+      let visibleCount = 0;
+
+      cardsList.forEach(card => {
+        const animalName = normalizeText(card.getAttribute('data-animal-name') || '');
+        const animalSpeciesRaw = card.getAttribute('data-animal-species') || '';
+        const animalSpeciesNorm = normalizeText(animalSpeciesRaw);
+
+        const matchesQuery = !term || animalName.includes(term) || animalSpeciesNorm.includes(term);
+        const matchesSpecies = !selectedSpecies || animalSpeciesRaw === selectedSpecies;
+
+        if (matchesQuery && matchesSpecies) {
+          card.style.display = '';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      let noResultsEl = grid.querySelector('.no-training-results');
+      if (visibleCount === 0) {
+        if (!noResultsEl) {
+          noResultsEl = document.createElement('div');
+          noResultsEl.className = 'empty-state no-training-results';
+          noResultsEl.style.gridColumn = '1/-1';
+          noResultsEl.innerHTML = `
+            <div class="empty-state-icon">🔍</div>
+            <p class="empty-state-text">No se encontraron animales para la búsqueda realizada.</p>
+          `;
+          grid.appendChild(noResultsEl);
+        } else {
+          noResultsEl.style.display = '';
+        }
+      } else if (noResultsEl) {
+        noResultsEl.style.display = 'none';
+      }
+    };
+
+    if (searchInput) searchInput.addEventListener('input', performFilter);
+    if (speciesSelect) speciesSelect.addEventListener('change', performFilter);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -2737,8 +2810,9 @@ App.Views = (() => {
       console.error('Error cargando pesos globales:', err);
     }
 
-    // Ordenar por nombre de animal
+    // Ordenar por nombre de animal y obtener lista de especies únicas
     weightsData.sort((a, b) => a.name.localeCompare(b.name));
+    const speciesList = [...new Set(weightsData.map(d => d.species).filter(Boolean))].sort();
 
     const getTrendBadge = (trend, diff) => {
       if (trend === 'up') return `<span class="badge" style="background:#ecfdf5;color:#059669;gap:4px;">↗ ${Math.abs(diff).toFixed(2)}kg</span>`;
@@ -2757,7 +2831,7 @@ App.Views = (() => {
     } else {
       const rows = weightsData.map(data => {
         return `
-          <tr>
+          <tr class="weight-row" data-animal-name="${H.escapeHtml(data.name)}" data-animal-species="${H.escapeHtml(data.species)}">
             <td style="padding:12px 16px;">
               <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:40px; height:40px; border-radius:10px; overflow:hidden; background:var(--gray-100); flex-shrink:0;">
@@ -2783,7 +2857,7 @@ App.Views = (() => {
             </td>
             <td style="padding:12px 16px; text-align:right;">
               <button class="btn btn-ghost" onclick="App.Router.navigate('/animal/${data.animalId}/weights')" style="font-size:0.85rem; padding:6px 12px; height:auto; color:var(--primary-600); font-weight:600; background:var(--primary-50);">
-                Historial (${data.totalRecords}) ➔
+                Historial ➔
               </button>
             </td>
           </tr>
@@ -2824,6 +2898,14 @@ App.Views = (() => {
           <button class="btn btn-primary" onclick="App.Views.openDeptRecordForm('weights', '${deptId}')">+ Nuevo Registro</button>
         </div>
         
+        ${UI.renderSearchBar({
+          searchId: 'weight-search-input',
+          filterId: 'weight-species-select',
+          placeholder: 'Buscar por nombre o especie...',
+          filterOptions: speciesList,
+          filterLabel: 'Todas las especies'
+        })}
+
         <div class="card" style="margin-top:var(--sp-4);">
           <div class="card-body" style="padding:0;">
             ${tableHtml}
@@ -2833,6 +2915,60 @@ App.Views = (() => {
     `;
 
     UI.initHeaderInteractions();
+
+    const normalizeText = str => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const searchInput = document.getElementById('weight-search-input');
+    const speciesSelect = document.getElementById('weight-species-select');
+
+    const performFilter = () => {
+      const query = searchInput ? searchInput.value.trim() : '';
+      const term = normalizeText(query);
+      const selectedSpecies = speciesSelect ? speciesSelect.value : '';
+
+      const tbody = document.querySelector('.table tbody');
+      if (!tbody) return;
+
+      const trs = tbody.querySelectorAll('tr.weight-row');
+      let visibleCount = 0;
+
+      trs.forEach(tr => {
+        const animalName = normalizeText(tr.getAttribute('data-animal-name') || '');
+        const animalSpeciesRaw = tr.getAttribute('data-animal-species') || '';
+        const animalSpeciesNorm = normalizeText(animalSpeciesRaw);
+
+        const matchesQuery = !term || animalName.includes(term) || animalSpeciesNorm.includes(term);
+        const matchesSpecies = !selectedSpecies || animalSpeciesRaw === selectedSpecies;
+
+        if (matchesQuery && matchesSpecies) {
+          tr.style.display = '';
+          visibleCount++;
+        } else {
+          tr.style.display = 'none';
+        }
+      });
+
+      let noResultsTr = tbody.querySelector('.no-weight-results-row');
+      if (visibleCount === 0) {
+        if (!noResultsTr) {
+          noResultsTr = document.createElement('tr');
+          noResultsTr.className = 'no-weight-results-row';
+          noResultsTr.innerHTML = `
+            <td colspan="6" style="padding: 2.5rem; text-align: center; color: var(--gray-500);">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+              <p style="font-weight: 500;">No se encontraron resultados.</p>
+            </td>
+          `;
+          tbody.appendChild(noResultsTr);
+        } else {
+          noResultsTr.style.display = '';
+        }
+      } else if (noResultsTr) {
+        noResultsTr.style.display = 'none';
+      }
+    };
+
+    if (searchInput) searchInput.addEventListener('input', performFilter);
+    if (speciesSelect) speciesSelect.addEventListener('change', performFilter);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -2900,8 +3036,9 @@ App.Views = (() => {
       console.error('Error cargando dietas globales:', err);
     }
 
-    // Ordenar por nombre de animal
+    // Ordenar por nombre de animal y obtener especies únicas para el selector
     dietsData.sort((a, b) => a.name.localeCompare(b.name));
+    const speciesList = [...new Set(dietsData.map(d => d.species).filter(Boolean))].sort();
 
     const getTrendBadge = (trend, diff) => {
       if (diff === null) return '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>';
@@ -2921,7 +3058,7 @@ App.Views = (() => {
     } else {
       const rows = dietsData.map(data => {
         return `
-          <tr>
+          <tr class="diet-row" data-animal-name="${H.escapeHtml(data.name)}" data-animal-species="${H.escapeHtml(data.species)}">
             <td style="padding:12px 16px;">
               <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:40px; height:40px; border-radius:10px; overflow:hidden; background:var(--gray-100); flex-shrink:0;">
@@ -2947,7 +3084,7 @@ App.Views = (() => {
             </td>
             <td style="padding:12px 16px; text-align:right;">
               <button class="btn btn-ghost" onclick="App.Router.navigate('/animal/${data.animalId}/diets')" style="font-size:0.85rem; padding:6px 12px; height:auto; color:var(--primary-600); font-weight:600; background:var(--primary-50);">
-                Historial (${data.totalRecords}) ➔
+                Historial ➔
               </button>
             </td>
           </tr>
@@ -2990,12 +3127,17 @@ App.Views = (() => {
       <main class="main-content">
         <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>🐟 Dashboard de Dietas — ${dept.name}</h2>
-          <div style="display:flex; gap:0.5rem;">
-            <button class="btn btn-outline" onclick="App.Router.navigate('/dept/${deptId}/fish-management')">🐟 Pedidos y Descongelación</button>
-            <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
-          </div>
+          <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
         </div>
         
+        ${UI.renderSearchBar({
+          searchId: 'diet-search-input',
+          filterId: 'diet-species-select',
+          placeholder: 'Buscar por nombre o especie...',
+          filterOptions: speciesList,
+          filterLabel: 'Todas las especies'
+        })}
+
         <div class="card" style="margin-top:var(--sp-4);">
           <div class="card-body" style="padding:0;">
             ${tableHtml}
@@ -3005,6 +3147,60 @@ App.Views = (() => {
     `;
 
     UI.initHeaderInteractions();
+
+    const normalizeText = str => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const searchInput = document.getElementById('diet-search-input');
+    const speciesSelect = document.getElementById('diet-species-select');
+
+    const performFilter = () => {
+      const query = searchInput ? searchInput.value.trim() : '';
+      const term = normalizeText(query);
+      const selectedSpecies = speciesSelect ? speciesSelect.value : '';
+
+      const tbody = document.querySelector('.table tbody');
+      if (!tbody) return;
+
+      const trs = tbody.querySelectorAll('tr.diet-row');
+      let visibleCount = 0;
+
+      trs.forEach(tr => {
+        const animalName = normalizeText(tr.getAttribute('data-animal-name') || '');
+        const animalSpeciesRaw = tr.getAttribute('data-animal-species') || '';
+        const animalSpeciesNorm = normalizeText(animalSpeciesRaw);
+
+        const matchesQuery = !term || animalName.includes(term) || animalSpeciesNorm.includes(term);
+        const matchesSpecies = !selectedSpecies || animalSpeciesRaw === selectedSpecies;
+
+        if (matchesQuery && matchesSpecies) {
+          tr.style.display = '';
+          visibleCount++;
+        } else {
+          tr.style.display = 'none';
+        }
+      });
+
+      let noResultsTr = tbody.querySelector('.no-diet-results-row');
+      if (visibleCount === 0) {
+        if (!noResultsTr) {
+          noResultsTr = document.createElement('tr');
+          noResultsTr.className = 'no-diet-results-row';
+          noResultsTr.innerHTML = `
+            <td colspan="6" style="padding: 2.5rem; text-align: center; color: var(--gray-500);">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+              <p style="font-weight: 500;">No se encontraron resultados.</p>
+            </td>
+          `;
+          tbody.appendChild(noResultsTr);
+        } else {
+          noResultsTr.style.display = '';
+        }
+      } else if (noResultsTr) {
+        noResultsTr.style.display = 'none';
+      }
+    };
+
+    if (searchInput) searchInput.addEventListener('input', performFilter);
+    if (speciesSelect) speciesSelect.addEventListener('change', performFilter);
   }
 
   // ── Dept Record Form (with animal selector) ───────────────

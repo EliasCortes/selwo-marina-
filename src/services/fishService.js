@@ -31,7 +31,12 @@ export async function getFishConsumptionSummary({ departamentoId } = {}) {
     .eq("estado", "Activo");
 
   if (departamentoId && departamentoId !== 'all') {
-    animalsQuery = animalsQuery.eq("departamento_id", departamentoId);
+    const d = String(departamentoId).toLowerCase();
+    if (['leones', 'delfines', 'mamiferos', 'mamiferos-marinos'].includes(d)) {
+      animalsQuery = animalsQuery.in("departamento_id", ['leones', 'delfines', 'mamiferos-marinos', 'mamiferos']);
+    } else {
+      animalsQuery = animalsQuery.eq("departamento_id", departamentoId);
+    }
   }
 
   const { data: activeAnimals, error: animErr } = await animalsQuery;
