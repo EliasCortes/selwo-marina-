@@ -13,6 +13,77 @@ App.FishManagement = (() => {
   let fishData = null;
   let customBoxWeights = {}; // Guarda ajustes de peso por caja del usuario { 'arenque_grande': 20 }
   let dietUpdateListenerRegistered = false;
+  let boxWeightDebounceTimers = {};
+
+  const STORAGE_KEY_BOX_WEIGHTS = 'selwo_fish_box_weights';
+
+  /**
+   * Carga los pesos por caja guardados en localStorage.
+   * @returns {Object} Mapa { fishKey: weight }
+   */
+  function loadStoredBoxWeights() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_BOX_WEIGHTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('[FishManagement] Error al leer pesos de caja de localStorage:', err);
+    }
+    return {};
+  }
+
+  /**
+   * Obtiene el peso por caja guardado para un tipo de pescado (o fallback por defecto seguro).
+   * @param {string} fishKey
+   * @param {number|string} defaultWeight
+   * @returns {number}
+   */
+  function getBoxWeight(fishKey, defaultWeight = 10) {
+    const fallback = parseFloat(defaultWeight) > 0 ? parseFloat(defaultWeight) : 10;
+    if (!fishKey) return fallback;
+
+    if (Object.keys(customBoxWeights).length === 0) {
+      customBoxWeights = loadStoredBoxWeights();
+    }
+
+    if (customBoxWeights[fishKey] !== undefined && customBoxWeights[fishKey] !== null) {
+      const val = parseFloat(customBoxWeights[fishKey]);
+      if (!isNaN(val) && val > 0) {
+        return val;
+      }
+    }
+
+    return fallback;
+  }
+
+  /**
+   * Guarda de forma persistente el peso por caja de un tipo de pescado en localStorage.
+   * @param {string} fishKey
+   * @param {number|string} weight
+   * @returns {boolean} Sucesso de la operación
+   */
+  function saveBoxWeight(fishKey, weight) {
+    if (!fishKey) return false;
+    const val = parseFloat(weight);
+    if (isNaN(val) || val <= 0) return false;
+
+    try {
+      if (Object.keys(customBoxWeights).length === 0) {
+        customBoxWeights = loadStoredBoxWeights();
+      }
+      customBoxWeights[fishKey] = val;
+      localStorage.setItem(STORAGE_KEY_BOX_WEIGHTS, JSON.stringify(customBoxWeights));
+      return true;
+    } catch (err) {
+      console.error('[FishManagement] Error al guardar peso por caja en localStorage:', err);
+      UI.showToast('No se pudo guardar la preferencia de peso por caja.', 'warning');
+      return false;
+    }
+  }
 
   /**
    * Renderiza la vista principal de Gestión de Pescado.
@@ -28,6 +99,9 @@ App.FishManagement = (() => {
         currentDeptFilter = params.deptId;
       }
     }
+
+    // Inicializar pesos de caja guardados
+    customBoxWeights = loadStoredBoxWeights();
 
     const app = document.getElementById('app');
 
@@ -108,13 +182,11 @@ App.FishManagement = (() => {
       const { getFishConsumptionSummary } = await import('../../src/services/animalService.js?v=16');
       fishData = await getFishConsumptionSummary({ departamentoId: currentDeptFilter });
 
-      // Aplicar pesos personalizados de caja si existen
+      // Aplicar pesos personalizados de caja guardados (prioridad sobre valor por defecto)
       if (fishData && fishData.fishSummary) {
         fishData.fishSummary.forEach(item => {
-          if (customBoxWeights[item.key]) {
-            item.defaultBoxKg = customBoxWeights[item.key];
-            item.boxesCount = Math.ceil(item.dailyKg / item.defaultBoxKg);
-          }
+          item.defaultBoxKg = getBoxWeight(item.key, item.defaultBoxKg);
+          item.boxesCount = Math.ceil(item.dailyKg / item.defaultBoxKg);
         });
 
         // Recalcular total de cajas
@@ -181,6 +253,11 @@ App.FishManagement = (() => {
       return;
     }
 
+    // Preservar elemento con foco activo para no perder cursor al tipeo
+    const activeElId = document.activeElement ? document.activeElement.id : null;
+    const selectionStart = document.activeElement && typeof document.activeElement.selectionStart === 'number' ? document.activeElement.selectionStart : null;
+    const selectionEnd = document.activeElement && typeof document.activeElement.selectionEnd === 'number' ? document.activeElement.selectionEnd : null;
+
     const todayKey = getTodayKey();
     const defrostState = getDefrostStatus(todayKey, currentDeptFilter);
 
@@ -223,8 +300,9 @@ App.FishManagement = (() => {
                          id="box-w-${item.key}"
                          class="box-weight-input" 
                          value="${item.defaultBoxKg}" 
-                         min="1" 
+                         min="0.1" 
                          step="0.5" 
+                         oninput="App.Views.FishManagement.onBoxWeightInput('${item.key}', this.value)"
                          onchange="App.Views.FishManagement.onBoxWeightChange('${item.key}', this.value)">
                 </div>
               </div>
@@ -310,6 +388,17 @@ App.FishManagement = (() => {
     `;
 
     container.innerHTML = panelHtml;
+
+    // Restaurar foco tras render
+    if (activeElId) {
+      const restoredInput = document.getElementById(activeElId);
+      if (restoredInput) {
+        restoredInput.focus();
+        if (selectionStart !== null && selectionEnd !== null && restoredInput.setSelectionRange) {
+          try { restoredInput.setSelectionRange(selectionStart, selectionEnd); } catch (e) {}
+        }
+      }
+    }
   }
 
   /**
@@ -345,20 +434,44 @@ App.FishManagement = (() => {
   }
 
   /**
+   * Listener de input con debounce (500ms) para auto-guardar mientras el usuario escribe.
+   */
+  function onBoxWeightInput(fishKey, newWeightStr) {
+    if (boxWeightDebounceTimers[fishKey]) {
+      clearTimeout(boxWeightDebounceTimers[fishKey]);
+    }
+    boxWeightDebounceTimers[fishKey] = setTimeout(() => {
+      onBoxWeightChange(fishKey, newWeightStr);
+    }, 500);
+  }
+
+  /**
    * Manejador del cambio de peso por caja de un tipo de pescado.
    */
   function onBoxWeightChange(fishKey, newWeightStr) {
+    if (boxWeightDebounceTimers[fishKey]) {
+      clearTimeout(boxWeightDebounceTimers[fishKey]);
+      delete boxWeightDebounceTimers[fishKey];
+    }
+
     const val = parseFloat(newWeightStr);
-    if (!isNaN(val) && val > 0) {
-      customBoxWeights[fishKey] = val;
-      if (fishData && fishData.fishSummary) {
-        const item = fishData.fishSummary.find(i => i.key === fishKey);
-        if (item) {
-          item.defaultBoxKg = val;
-          item.boxesCount = Math.ceil(item.dailyKg / val);
-          fishData.grandTotals.totalBoxes = fishData.fishSummary.reduce((sum, i) => sum + i.boxesCount, 0);
-          renderPanels();
-        }
+    if (isNaN(val) || val <= 0) {
+      UI.showToast('Por favor, introduce un peso por caja mayor a 0.', 'warning');
+      const currentItem = fishData?.fishSummary?.find(i => i.key === fishKey);
+      const safeWeight = currentItem ? currentItem.defaultBoxKg : getBoxWeight(fishKey, 10);
+      const inputEl = document.getElementById(`box-w-${fishKey}`);
+      if (inputEl) inputEl.value = safeWeight;
+      return;
+    }
+
+    const saved = saveBoxWeight(fishKey, val);
+    if (saved && fishData && fishData.fishSummary) {
+      const item = fishData.fishSummary.find(i => i.key === fishKey);
+      if (item) {
+        item.defaultBoxKg = val;
+        item.boxesCount = Math.ceil(item.dailyKg / val);
+        fishData.grandTotals.totalBoxes = fishData.fishSummary.reduce((sum, i) => sum + i.boxesCount, 0);
+        renderPanels();
       }
     }
   }
@@ -606,6 +719,9 @@ App.FishManagement = (() => {
     render,
     onDeptChange,
     onBoxWeightChange,
+    onBoxWeightInput,
+    saveBoxWeight,
+    getBoxWeight,
     toggleDefrostStatus,
     toggleExportMenu,
     exportExcel,

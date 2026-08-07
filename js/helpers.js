@@ -457,6 +457,86 @@ App.Helpers = (() => {
   };
 
   // ── Public API ────────────────────────────────────────────
+  /**
+   * Filtra dinámicamente registros por animal y/o rango de fechas o período de tiempo.
+   * @param {Array<Object>} rawRecords
+   * @param {Object} filters
+   * @param {string} [filters.animalId] - 'all' o UUID de animal
+   * @param {string} [filters.period] - 'all'|'today'|'7days'|'30days'|'this_month'|'this_year'|'custom'
+   * @param {string} [filters.startDate] - Fecha inicio (YYYY-MM-DD)
+   * @param {string} [filters.endDate] - Fecha fin (YYYY-MM-DD)
+   * @returns {Array<Object>}
+   */
+  function filterReportData(rawRecords = [], filters = {}) {
+    if (!Array.isArray(rawRecords)) return [];
+
+    const {
+      animalId = 'all',
+      period = 'all',
+      startDate = '',
+      endDate = '',
+    } = filters;
+
+    const now = new Date();
+    let computedStart = null;
+    let computedEnd = null;
+
+    if (period === 'today') {
+      const todayStr = now.toISOString().split('T')[0];
+      computedStart = new Date(`${todayStr}T00:00:00`);
+      computedEnd = new Date(`${todayStr}T23:59:59`);
+    } else if (period === '7days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      computedStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      computedEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    } else if (period === '30days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      computedStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      computedEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    } else if (period === 'this_month') {
+      computedStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      computedEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    } else if (period === 'this_year') {
+      computedStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
+      computedEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    } else if (period === 'custom') {
+      if (startDate) computedStart = new Date(`${startDate}T00:00:00`);
+      if (endDate) computedEnd = new Date(`${endDate}T23:59:59`);
+    }
+
+    return rawRecords.filter(record => {
+      // 1. Filtro por Animal
+      if (animalId && animalId !== 'all') {
+        const recAnimId = record.animal_id || record.animalId || record.id;
+        if (String(recAnimId) !== String(animalId)) {
+          return false;
+        }
+      }
+
+      // 2. Filtro por Fecha
+      if (computedStart || computedEnd) {
+        const rawDateStr = record.fecha || record.date || record.session_date || record.created_at || record.fecha_nacimiento;
+        if (!rawDateStr) return true;
+
+        let recDate;
+        if (typeof rawDateStr === 'string' && rawDateStr.length === 10 && rawDateStr.includes('-')) {
+          recDate = new Date(`${rawDateStr}T12:00:00`);
+        } else {
+          recDate = new Date(rawDateStr);
+        }
+
+        if (isNaN(recDate.getTime())) return true;
+
+        if (computedStart && recDate < computedStart) return false;
+        if (computedEnd && recDate > computedEnd) return false;
+      }
+
+      return true;
+    });
+  }
+
   return {
     generateId,
     formatDate,
@@ -469,6 +549,7 @@ App.Helpers = (() => {
     capitalize,
     escapeHtml,
     debounce,
+    filterReportData,
     DEPARTMENTS,
     getDeptMeta,
     isFishDept,

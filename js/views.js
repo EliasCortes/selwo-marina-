@@ -312,10 +312,25 @@ App.Views = (() => {
       { label: 'Animales' },
     ])}
       <main class="main-content">
-        <div class="page-header">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>🐾 Animales</h2>
-          <button class="btn btn-primary" onclick="App.Views.openAnimalForm('${deptId}')">+ Nuevo Animal</button>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('animals', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('animals', '${deptId}')`
+            })}
+            <button class="btn btn-primary" onclick="App.Views.openAnimalForm('${deptId}')">+ Nuevo Animal</button>
+          </div>
         </div>
+        ${App.UI.renderAdvancedFilterBar({
+          animals: dbAnimals.map(a => ({ id: a.id, nombre: a.nombre })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('animals', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('animals', '${deptId}')`
+        })}
         ${UI.renderSearchBar({
       placeholder: 'Buscar por nombre o especie...',
       filterOptions: species,
@@ -441,10 +456,25 @@ App.Views = (() => {
       { label: section.name },
     ])}
       <main class="main-content">
-        <div class="page-header">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>${section.icon} ${section.name}</h2>
-          <button class="btn btn-primary" onclick="${sectionId === 'diets' ? `App.Views.openDietAnimalSelector('${deptId}')` : `App.Views.openDeptRecordForm('${sectionId}', '${deptId}')`} ">+ Nuevo Registro</button>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('${sectionId}', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('${sectionId}', '${deptId}')`
+            })}
+            <button class="btn btn-primary" onclick="${sectionId === 'diets' ? `App.Views.openDietAnimalSelector('${deptId}')` : `App.Views.openDeptRecordForm('${sectionId}', '${deptId}')`} ">+ Nuevo Registro</button>
+          </div>
         </div>
+        ${App.UI.renderAdvancedFilterBar({
+          animals: Object.entries(animalMap).map(([id, nombre]) => ({ id, nombre })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('${sectionId}', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('${sectionId}', '${deptId}')`
+        })}
         <div class="card">
           <div class="card-body">
             ${UI.renderTable(records, columns, { type: sectionId, showAnimalName: true, animalMap, deptId })}
@@ -2000,7 +2030,7 @@ App.Views = (() => {
       const targetUrl = `/animal/${animal.id}/trainings`;
 
       cards.push(`
-        <div class="animal-card" data-animal-name="${H.escapeHtml(animal.nombre)}" data-animal-species="${H.escapeHtml(animal.especie)}" onclick="App.Router.navigate('${targetUrl}')" role="button" tabindex="0">
+        <div class="animal-card" data-animal-id="${animal.id}" data-animal-name="${H.escapeHtml(animal.nombre)}" data-animal-species="${H.escapeHtml(animal.especie)}" onclick="App.Router.navigate('${targetUrl}')" role="button" tabindex="0">
           <div class="animal-avatar">
             <img src="${photoUrl}" alt="${H.escapeHtml(animal.nombre)}" loading="lazy" style="object-fit: cover; object-position: center 20%;">
           </div>
@@ -2028,9 +2058,25 @@ App.Views = (() => {
       { label: 'Entrenamientos' },
     ])}
       <main class="main-content">
-        <div class="modern-training-header">
+        <div class="modern-training-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2 class="modern-training-title">🎯 Selecciona un Animal</h2>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('trainings', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('trainings', '${deptId}')`
+            })}
+          </div>
         </div>
+
+        ${App.UI.renderAdvancedFilterBar({
+          animals: (animals || []).map(a => ({ id: a.id, nombre: a.nombre })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('trainings', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('trainings', '${deptId}')`
+        })}
 
         ${UI.renderSearchBar({
           searchId: 'training-search-input',
@@ -2893,10 +2939,26 @@ App.Views = (() => {
         { label: 'Pesos (Dashboard)' },
       ])}
       <main class="main-content">
-        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>⚖️ Dashboard de Pesos — ${dept.name}</h2>
-          <button class="btn btn-primary" onclick="App.Views.openDeptRecordForm('weights', '${deptId}')">+ Nuevo Registro</button>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('weights', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('weights', '${deptId}')`
+            })}
+            <button class="btn btn-primary" onclick="App.Views.openDeptRecordForm('weights', '${deptId}')">+ Nuevo Registro</button>
+          </div>
         </div>
+
+        ${App.UI.renderAdvancedFilterBar({
+          animals: (weightsData || []).map(a => ({ id: a.animalId, nombre: a.name })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('weights', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('weights', '${deptId}')`
+        })}
         
         ${UI.renderSearchBar({
           searchId: 'weight-search-input',
@@ -2985,10 +3047,12 @@ App.Views = (() => {
     let animalAvatars = {};
     let animalSpecies = {};
     let dietsData = [];
+    let animals = [];
 
     try {
       const records = await getAllDietRecords(deptId);
-      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      const res = await getAnimals({ departamentoId: deptId });
+      animals = res.data || [];
       
       for (const a of (animals || [])) {
         animalMap[a.id] = a.nombre;
@@ -3015,8 +3079,8 @@ App.Views = (() => {
             trendDiff = null;
           }
 
-          const fmtVal = val => val ? parseFloat(Number(val).toFixed(2)) : val;
-          let displayFood = deptId === 'leones' ? (latest.dieta_total ? fmtVal(latest.dieta_total) + ' kg (Total)' : '—') : (latest.quantity ? fmtVal(latest.quantity) + ' (' + latest.food_type + ')' : latest.food_type);
+          const fmtVal = val => val ? Math.round((parseFloat(val) + Number.EPSILON) * 100) / 100 : val;
+          let displayFood = deptId === 'leones' ? (latest.dieta_total ? `${fmtVal(latest.dieta_total)} kg (Total)` : '—') : (latest.quantity ? `${fmtVal(latest.quantity)} (${latest.food_type})` : (latest.food_type || '—'));
 
           dietsData.push({
             animalId: a.id,
@@ -3127,8 +3191,24 @@ App.Views = (() => {
       <main class="main-content">
         <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <h2>🐟 Dashboard de Dietas — ${dept.name}</h2>
-          <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('diets', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('diets', '${deptId}')`
+            })}
+            <button class="btn btn-primary" onclick="${createBtnAction}">+ Nuevo Registro</button>
+          </div>
         </div>
+
+        ${App.UI.renderAdvancedFilterBar({
+          animals: (animals || []).map(a => ({ id: a.id, nombre: a.nombre })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('diets', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('diets', '${deptId}')`
+        })}
         
         ${UI.renderSearchBar({
           searchId: 'diet-search-input',
@@ -3746,6 +3826,20 @@ App.Views = (() => {
     const dept = H.getDeptMeta(deptId);
     const app = document.getElementById('app');
 
+    let records = [];
+    let animals = [];
+    let animalMap = {};
+
+    try {
+      const { getEnrichmentsByDept, getAnimals } = await import('../src/services/animalService.js?v=16');
+      records = await getEnrichmentsByDept(deptId);
+      const res = await getAnimals({ departamentoId: deptId });
+      animals = res.data || [];
+      (animals || []).forEach(a => animalMap[a.id] = a.nombre);
+    } catch(e) {
+      console.error('Error fetching global enrichments:', e);
+    }
+
     app.innerHTML = `
       ${UI.renderHeader(`${dept.name} — Enriquecimientos`, `/dept/${deptId}`)}
       ${UI.renderBreadcrumbs([
@@ -3754,10 +3848,28 @@ App.Views = (() => {
         { label: 'Enriquecimientos' },
       ])}
       <main class="main-content">
-        <div class="page-header">
-          <h2 class="modern-training-title">🧩 Enriquecimientos - Vista General</h2>
-          <p class="text-sm text-muted" style="margin-top: 4px;">Mostrando registros procedentes de las sesiones de entreno.</p>
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2 class="modern-training-title">🧩 Enriquecimientos - Vista General</h2>
+            <p class="text-sm text-muted" style="margin-top: 4px;">Mostrando registros procedentes de las sesiones de entreno.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            ${App.ExportHeader.renderExportActions({
+              exportHandlerGlobal: `App.Views.exportSectionData('enrichments', '${deptId}', '%FORMAT%')`,
+              printHandlerGlobal: `App.Views.printSectionData('enrichments', '${deptId}')`
+            })}
+          </div>
         </div>
+
+        ${App.UI.renderAdvancedFilterBar({
+          animals: (animals || []).map(a => ({ id: a.id, nombre: a.nombre })),
+          selectedAnimalId: activeSectionFilters.animalId,
+          selectedPeriod: activeSectionFilters.period,
+          startDate: activeSectionFilters.startDate,
+          endDate: activeSectionFilters.endDate,
+          onApplyGlobal: `App.Views.applySectionFilters('enrichments', '${deptId}')`,
+          onResetGlobal: `App.Views.resetSectionFilters('enrichments', '${deptId}')`
+        })}
         <div id="global-enrichments-container">
           <div style="padding:40px;text-align:center;">Cargando registros...</div>
         </div>
@@ -3765,13 +3877,6 @@ App.Views = (() => {
     `;
 
     try {
-      const { getEnrichmentsByDept, getAnimals } = await import('../src/services/animalService.js?v=16');
-      const records = await getEnrichmentsByDept(deptId);
-      
-      const { data: animals } = await getAnimals({ departamentoId: deptId });
-      const animalMap = {};
-      (animals || []).forEach(a => animalMap[a.id] = a.nombre);
-
       const container = document.getElementById('global-enrichments-container');
       if (records.length === 0) {
         container.innerHTML = '<p class="text-muted">No hay enriquecimientos registrados en este departamento.</p>';
@@ -3819,6 +3924,384 @@ App.Views = (() => {
     }
   }
 
+  function formatFishDietDetails(r) {
+    if (!r) return '';
+    const parts = [];
+    const fishFields = [
+      { key: 'arenque_grande', label: 'Arenque G.' },
+      { key: 'capelin', label: 'Capelín' },
+      { key: 'arenque_pequeno', label: 'Arenque P.' },
+      { key: 'sprat', label: 'Sprat' },
+      { key: 'caballa', label: 'Caballa' },
+      { key: 'bacaladilla', label: 'Bacaladilla' },
+      { key: 'sardina', label: 'Sardina' },
+      { key: 'merlan', label: 'Merlán' },
+      { key: 'merluza', label: 'Merluza' },
+    ];
+
+    fishFields.forEach(f => {
+      const val = parseFloat(r[f.key]);
+      if (!isNaN(val) && val > 0) {
+        const cleanVal = Math.round((val + Number.EPSILON) * 100) / 100;
+        parts.push(`${f.label}: ${cleanVal} kg`);
+      }
+    });
+
+    if (r.alimento) {
+      if (typeof r.alimento === 'string' && r.alimento.trim().startsWith('[')) {
+        try {
+          const extras = JSON.parse(r.alimento);
+          if (Array.isArray(extras)) {
+            extras.forEach(ex => {
+              if (ex.tipo || ex.food || ex.nombre) {
+                const name = ex.tipo || ex.food || ex.nombre;
+                const kg = parseFloat(ex.kg || ex.cantidad || 0);
+                const cleanKg = !isNaN(kg) ? Math.round((kg + Number.EPSILON) * 100) / 100 : 0;
+                parts.push(`${name}: ${cleanKg} kg`);
+              }
+            });
+          }
+        } catch(e) {}
+      } else if (typeof r.alimento === 'string' && !r.alimento.startsWith('[') && !r.alimento.includes('(Total)')) {
+        parts.push(r.alimento);
+      }
+    }
+
+    if (r.food_type && !parts.some(p => p.toLowerCase().includes(String(r.food_type).toLowerCase()))) {
+      const qty = parseFloat(r.quantity);
+      const qtyStr = !isNaN(qty) && qty > 0 ? ` (${Math.round((qty + Number.EPSILON) * 100) / 100} kg)` : '';
+      parts.push(`${r.food_type}${qtyStr}`);
+    }
+
+    if (r.vitaminas) {
+      parts.push(`Vitaminas: ${r.vitaminas}`);
+    }
+
+    return parts.join(', ');
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // CONFIGURACIÓN Y FUNCIONALIDAD REUTILIZABLE DE EXPORTACIÓN
+  // ──────────────────────────────────────────────────────────
+
+  let activeSectionFilters = {
+    animalId: 'all',
+    period: 'all',
+    startDate: '',
+    endDate: '',
+  };
+
+  function getActiveFiltersFromDOM() {
+    const animalEl = document.getElementById('filter-animal');
+    const periodEl = document.getElementById('filter-period');
+    const startEl = document.getElementById('filter-date-start');
+    const endEl = document.getElementById('filter-date-end');
+
+    if (animalEl) activeSectionFilters.animalId = animalEl.value || 'all';
+    if (periodEl) activeSectionFilters.period = periodEl.value || 'all';
+    if (startEl) activeSectionFilters.startDate = startEl.value || '';
+    if (endEl) activeSectionFilters.endDate = endEl.value || '';
+
+    return { ...activeSectionFilters };
+  }
+
+  function resetActiveSectionFilters() {
+    activeSectionFilters = {
+      animalId: 'all',
+      period: 'all',
+      startDate: '',
+      endDate: '',
+    };
+  }
+
+  function formatFilterSummarySubtitle(filters, animalName = '', deptName = '') {
+    const parts = [];
+    if (deptName) parts.push(`Departamento: ${deptName}`);
+    
+    if (filters.animalId && filters.animalId !== 'all') {
+      parts.push(`Animal: ${animalName || filters.animalId}`);
+    } else {
+      parts.push(`Animales: Todos`);
+    }
+
+    const periodLabels = {
+      all: 'Todos los registros',
+      today: 'Día actual (Hoy)',
+      '7days': 'Últimos 7 días',
+      '30days': 'Últimos 30 días',
+      this_month: 'Este mes',
+      this_year: 'Este año',
+      custom: `Rango: ${filters.startDate || 'Inicio'} al ${filters.endDate || 'Fin'}`
+    };
+
+    const pLabel = periodLabels[filters.period] || 'Todos los registros';
+    parts.push(`Período: ${pLabel}`);
+
+    return parts.join(' | ');
+  }
+
+  const EXPORT_COLUMNS = {
+    animals: [
+      { key: 'nombre', label: 'Nombre' },
+      { key: 'especie', label: 'Especie' },
+      { key: 'sexo', label: 'Sexo' },
+      { key: 'fecha_nacimiento', label: 'Fecha Nacimiento', formatFn: val => H.formatDate(val) },
+      { key: 'zims_id', label: 'ZIMS ID' },
+      { key: 'microchip', label: 'Microchip' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'ubicacion', label: 'Ubicación' },
+      { key: 'observaciones', label: 'Observaciones' },
+    ],
+    diets: [
+      { key: 'animal_nombre', label: 'Animal' },
+      { key: 'fecha', label: 'Fecha', formatFn: val => H.formatDate(val) },
+      { key: 'alimento', label: 'Alimento / Pescado' },
+      { key: 'cantidad_gramos', label: 'Cantidad (kg/día)' },
+      { key: 'observaciones', label: 'Observaciones' },
+    ],
+    trainings: [
+      { key: 'animal_nombre', label: 'Animal' },
+      { key: 'fecha', label: 'Fecha', formatFn: val => H.formatDate(val) },
+      { key: 'numero_sesion', label: 'Nº Sesión' },
+      { key: 'conducta_entrenada', label: 'Conducta / Entrenador' },
+      { key: 'resultado', label: 'Actitud / Nivel' },
+      { key: 'enriquecimiento', label: 'Enriquecimiento' },
+      { key: 'comentarios', label: 'Observaciones' },
+    ],
+    weights: [
+      { key: 'animal_nombre', label: 'Animal' },
+      { key: 'fecha', label: 'Fecha Pesaje', formatFn: val => H.formatDate(val) },
+      { key: 'peso_kg', label: 'Peso (kg)', formatFn: val => (val !== null && val !== undefined && val !== '') ? val + ' kg' : '—' },
+      { key: 'trendDiff', label: 'Tendencia', formatFn: val => (val !== null && val !== undefined) ? (val > 0 ? `+${val.toFixed(2)} kg` : `${val.toFixed(2)} kg`) : '—' },
+      { key: 'observaciones', label: 'Observaciones' },
+    ],
+    enrichments: [
+      { key: 'animal_nombre', label: 'Animal' },
+      { key: 'fecha', label: 'Fecha', formatFn: val => H.formatDate(val) },
+      { key: 'tipo_enriquecimiento', label: 'Tipo Enriquecimiento' },
+      { key: 'sesion', label: 'Sesión' },
+      { key: 'observaciones', label: 'Observaciones' },
+    ],
+    veterinary: [
+      { key: 'animal_nombre', label: 'Animal' },
+      { key: 'fecha', label: 'Fecha', formatFn: val => H.formatDate(val) },
+      { key: 'tipo_evento', label: 'Tipo de Evento / Tratamiento' },
+      { key: 'dosis_diagnostico', label: 'Dosis / Indicaciones' },
+      { key: 'veterinario_obs', label: 'Veterinario / Observaciones' },
+    ],
+  };
+
+  async function getExportDataForSection(sectionId, deptId, customFilters = null) {
+    const { getAnimals, getAllDietRecords, getAllWeightRecords, getEnrichmentsByDept } = await import('../src/services/animalService.js?v=16');
+    const deptMeta = H.getDeptMeta(deptId);
+    const filters = customFilters || getActiveFiltersFromDOM();
+    
+    let animalMap = {};
+    let animalObjMap = {};
+    let selectedAnimalName = '';
+    try {
+      const { data: animals } = await getAnimals({ departamentoId: deptId });
+      (animals || []).forEach(a => {
+        animalMap[a.id] = a.nombre;
+        animalObjMap[a.id] = a;
+        if (String(a.id) === String(filters.animalId)) {
+          selectedAnimalName = a.nombre;
+        }
+      });
+    } catch(e) {
+      console.warn('Error fetching animals for export:', e);
+    }
+
+    let records = [];
+
+    if (sectionId === 'animals') {
+      const { data } = await getAnimals({ departamentoId: deptId });
+      records = (data || []).map(a => ({
+        id: a.id,
+        animal_id: a.id,
+        nombre: a.nombre,
+        especie: a.especie,
+        sexo: a.sexo || 'Desconocido',
+        fecha_nacimiento: a.fecha_nacimiento,
+        fecha: a.fecha_nacimiento || a.created_at,
+        zims_id: a.zims_id || '—',
+        microchip: a.microchip || '—',
+        estado: a.estado || 'Activo',
+        ubicacion: a.ubicacion || '—',
+        observaciones: a.observaciones || '—'
+      }));
+    } else if (sectionId === 'diets') {
+      const dietRecords = await getAllDietRecords(deptId);
+      records = dietRecords.map(r => {
+        const animalName = animalMap[r.animal_id] || 'Desconocido';
+        const fishDetails = formatFishDietDetails(r);
+        
+        const totalKg = parseFloat(r.dieta_total || r.quantity || r.cantidad_gramos);
+        const cleanTotalKg = !isNaN(totalKg) && totalKg > 0 
+          ? `${Math.round((totalKg + Number.EPSILON) * 100) / 100} kg/día` 
+          : (r.quantity || r.cantidad_gramos ? String(r.quantity || r.cantidad_gramos) : '—');
+
+        const foodType = fishDetails || (r.food_type || r.alimento || '—');
+
+        return {
+          animal_id: r.animal_id,
+          animal_nombre: animalName,
+          fecha: r.fecha || r.date,
+          alimento: foodType,
+          cantidad_gramos: cleanTotalKg,
+          observaciones: r.observaciones || '—'
+        };
+      });
+    } else if (sectionId === 'weights') {
+      const weightRecords = await getAllWeightRecords(deptId);
+      records = weightRecords.map(r => ({
+        animal_id: r.animal_id,
+        animal_nombre: animalMap[r.animal_id] || 'Desconocido',
+        fecha: r.fecha || r.date,
+        peso_kg: r.peso_kg || r.weight_kg,
+        trendDiff: r.trendDiff ?? null,
+        observaciones: r.observaciones || '—'
+      }));
+    } else if (sectionId === 'trainings') {
+      const service = DB.getService('trainings');
+      const raw = service ? await service.getByDepartment(deptId) : [];
+      records = raw.map(r => ({
+        animal_id: r.animal_id,
+        animal_nombre: animalMap[r.animal_id] || 'Desconocido',
+        fecha: r.fecha || r.date || r.session_date,
+        numero_sesion: r.numero_sesion || 1,
+        conducta_entrenada: r.conducta_entrenada || r.behavior || r.trainer || '—',
+        resultado: r.resultado || r.result || r.attitude || '—',
+        enriquecimiento: r.enrichment || r.enriquecimiento || '—',
+        comentarios: r.comentarios || r.observations || r.notes || '—'
+      }));
+    } else if (sectionId === 'enrichments') {
+      const raw = await getEnrichmentsByDept(deptId);
+      records = raw.map(r => {
+        const match = r.observaciones?.match(/^Sesión (\d+)(?::\s*(.*))?$/);
+        const sesion = match ? match[1] : '—';
+        const obs = match ? (match[2] || '—') : (r.observaciones || '—');
+        return {
+          animal_id: r.animal_id,
+          animal_nombre: animalMap[r.animal_id] || 'Desconocido',
+          fecha: r.fecha || r.date,
+          tipo_enriquecimiento: r.tipo_enriquecimiento || '—',
+          sesion: sesion,
+          observaciones: obs
+        };
+      });
+    } else if (sectionId === 'veterinary' || sectionId === 'health') {
+      const service = DB.getService('veterinary');
+      const raw = service ? await service.getByDepartment(deptId) : [];
+      records = raw.map(r => ({
+        animal_id: r.animal_id,
+        animal_nombre: animalMap[r.animal_id] || 'Desconocido',
+        fecha: r.fecha || r.date,
+        tipo_evento: r.tipo_evento || r.treatment || r.event_type || '—',
+        dosis_diagnostico: r.dosis || r.diagnosis || r.frequency || '—',
+        veterinario_obs: r.veterinario || r.observaciones || r.notes || '—'
+      }));
+    }
+
+    // Aplicar filtrado centralizado
+    const filteredRecords = H.filterReportData(records, filters);
+    const subtitle = formatFilterSummarySubtitle(filters, selectedAnimalName, deptMeta.name);
+    const title = `Reporte de ${H.getSectionMeta(sectionId)?.name || sectionId} — ${deptMeta.name}`;
+
+    return { records: filteredRecords, columns: EXPORT_COLUMNS[sectionId] || [], title, subtitle };
+  }
+
+  async function applySectionFilters(sectionId, deptId) {
+    const filters = getActiveFiltersFromDOM();
+    const { records } = await getExportDataForSection(sectionId, deptId, filters);
+
+    const badgeEl = document.getElementById('filter-active-count-badge');
+    if (badgeEl) {
+      badgeEl.textContent = `Registros filtrados: ${records.length}`;
+    }
+
+    const tbody = document.querySelector('.table tbody');
+    if (tbody) {
+      const trs = tbody.querySelectorAll('tr');
+      trs.forEach(tr => {
+        const trAnimId = tr.getAttribute('data-animal-id') || '';
+        const trAnimName = (tr.getAttribute('data-animal-name') || tr.cells[0]?.textContent || '').trim().toLowerCase();
+        const trAnimSpecies = (tr.getAttribute('data-animal-species') || '').trim().toLowerCase();
+
+        const isMatch = (filters.animalId === 'all' || trAnimId === filters.animalId) && (records.length === 0 || records.some(r => {
+          const rName = (r.animal_nombre || r.nombre || '').trim().toLowerCase();
+          const rSpec = (r.especie || '').trim().toLowerCase();
+          return (rName && trAnimName.includes(rName)) || (rSpec && trAnimSpecies.includes(rSpec));
+        }));
+
+        tr.style.display = isMatch ? '' : 'none';
+      });
+    }
+
+    // Para la vista de tarjetas de animales (Entrenos, Animales)
+    const gridEl = document.getElementById('animal-grid') || document.getElementById('training-animal-grid') || document.querySelector('.animal-grid');
+    if (gridEl) {
+      const cards = gridEl.querySelectorAll('.animal-card');
+      cards.forEach(card => {
+        const cardAnimId = card.getAttribute('data-animal-id') || '';
+        const cName = (card.getAttribute('data-animal-name') || card.querySelector('.animal-name')?.textContent || '').trim().toLowerCase();
+        
+        const isMatch = (filters.animalId === 'all' || cardAnimId === filters.animalId);
+        card.style.display = isMatch ? '' : 'none';
+      });
+    }
+  }
+
+  async function resetSectionFilters(sectionId, deptId) {
+    resetActiveSectionFilters();
+    const animalEl = document.getElementById('filter-animal');
+    const periodEl = document.getElementById('filter-period');
+    const startEl = document.getElementById('filter-date-start');
+    const endEl = document.getElementById('filter-date-end');
+    if (animalEl) animalEl.value = 'all';
+    if (periodEl) periodEl.value = 'all';
+    if (startEl) startEl.value = '';
+    if (endEl) endEl.value = '';
+    if (window.App.UI && window.App.UI.toggleCustomDateInputs) {
+      window.App.UI.toggleCustomDateInputs('all');
+    }
+    await applySectionFilters(sectionId, deptId);
+  }
+
+  async function exportSectionData(sectionId, deptId, format) {
+    try {
+      const filters = getActiveFiltersFromDOM();
+      const { records, columns, title, subtitle } = await getExportDataForSection(sectionId, deptId, filters);
+      App.ExportUtils.exportData({
+        data: records,
+        columns: columns,
+        fileName: `${sectionId}_${deptId}`,
+        format: format,
+        title: title,
+        subtitle: subtitle
+      });
+    } catch(err) {
+      console.error('Error al exportar:', err);
+      UI.showToast('Error al exportar datos: ' + err.message, 'error');
+    }
+  }
+
+  async function printSectionData(sectionId, deptId) {
+    try {
+      const filters = getActiveFiltersFromDOM();
+      const { records, columns, title, subtitle } = await getExportDataForSection(sectionId, deptId, filters);
+      App.ExportUtils.printReport({
+        title: title,
+        subtitle: subtitle,
+        columns: columns,
+        data: records
+      });
+    } catch(err) {
+      console.error('Error al imprimir:', err);
+      UI.showToast('Error al preparar impresión: ' + err.message, 'error');
+    }
+  }
+
   return {
     renderSplash,
     renderMenu,
@@ -3838,6 +4321,10 @@ App.Views = (() => {
     openAnimalForm,
     deleteAnimal,
     exportDeptData,
+    exportSectionData,
+    printSectionData,
+    applySectionFilters,
+    resetSectionFilters,
     openDeptRecordForm,
     toggleFavorite,
     setWeightUnit,

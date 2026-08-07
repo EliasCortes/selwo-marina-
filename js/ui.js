@@ -754,6 +754,97 @@ App.UI = (() => {
     return html;
   }
 
+  /**
+   * Genera el HTML de la barra de filtros avanzados (Animal, Rango de Fechas / Período, Fechas personalizadas y botones de acción).
+   * @param {Object} options
+   */
+  function renderAdvancedFilterBar(options = {}) {
+    const {
+      animals = [],
+      selectedAnimalId = 'all',
+      selectedPeriod = 'all',
+      startDate = '',
+      endDate = '',
+      onApplyGlobal = "App.Views.applySectionFilters()",
+      onResetGlobal = "App.Views.resetSectionFilters()",
+    } = options;
+
+    const periodOptions = [
+      { value: 'all', label: '🗓️ Todos los registros' },
+      { value: 'today', label: '📅 Día actual (Hoy)' },
+      { value: '7days', label: '⏱️ Últimos 7 días' },
+      { value: '30days', label: '📊 Últimos 30 días' },
+      { value: 'this_month', label: '📆 Este mes' },
+      { value: 'this_year', label: '📈 Este año' },
+      { value: 'custom', label: '⚙️ Personalizado (Rango)' },
+    ];
+
+    const isCustom = selectedPeriod === 'custom';
+
+    return `
+      <div class="card advanced-filter-card" style="margin-bottom:var(--sp-4); padding:1rem 1.25rem; background:var(--surface-card); border:1px solid var(--gray-200); border-radius:var(--radius-md);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem; color:var(--gray-800); font-weight:600; font-size:0.95rem;">
+            <span>🔍</span> <span>Filtros de Búsqueda y Reporte</span>
+          </div>
+          <div id="filter-active-count-badge" style="font-size:0.8rem; font-weight:600; color:var(--primary-700); background:var(--primary-50); padding:4px 10px; border-radius:9999px; border:1px solid var(--primary-200);">
+            Filtrado activo
+          </div>
+        </div>
+        <div class="advanced-filter-grid" style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+          
+          <!-- Filtro por Animal -->
+          <div class="form-group" style="margin-bottom:0; flex:1 1 180px; min-width:160px;">
+            <label class="form-label" for="filter-animal" style="font-size:0.8rem; margin-bottom:4px; font-weight:500;">🐾 Animal:</label>
+            <select id="filter-animal" class="form-select" style="font-size:0.875rem; height:38px; padding:4px 10px;" onchange="${onApplyGlobal}">
+              <option value="all" ${selectedAnimalId === 'all' ? 'selected' : ''}>Todos los animales</option>
+              ${animals.map(a => `<option value="${a.id}" ${String(selectedAnimalId) === String(a.id) ? 'selected' : ''}>${H.escapeHtml(a.nombre || a.name)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Filtro por Rango de Fechas / Período -->
+          <div class="form-group" style="margin-bottom:0; flex:1 1 180px; min-width:160px;">
+            <label class="form-label" for="filter-period" style="font-size:0.8rem; margin-bottom:4px; font-weight:500;">📅 Período:</label>
+            <select id="filter-period" class="form-select" style="font-size:0.875rem; height:38px; padding:4px 10px;" onchange="App.UI.toggleCustomDateInputs(this.value); ${onApplyGlobal}">
+              ${periodOptions.map(p => `<option value="${p.value}" ${selectedPeriod === p.value ? 'selected' : ''}>${p.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Rango personalizado: Fecha Inicio -->
+          <div class="form-group date-custom-group" id="group-date-start" style="margin-bottom:0; flex:1 1 140px; min-width:130px; display:${isCustom ? 'block' : 'none'};">
+            <label class="form-label" for="filter-date-start" style="font-size:0.8rem; margin-bottom:4px; font-weight:500;">Fecha Inicio:</label>
+            <input type="date" id="filter-date-start" class="form-input" style="font-size:0.85rem; height:38px; padding:4px 8px;" value="${startDate}" onchange="${onApplyGlobal}">
+          </div>
+
+          <!-- Rango personalizado: Fecha Fin -->
+          <div class="form-group date-custom-group" id="group-date-end" style="margin-bottom:0; flex:1 1 140px; min-width:130px; display:${isCustom ? 'block' : 'none'};">
+            <label class="form-label" for="filter-date-end" style="font-size:0.8rem; margin-bottom:4px; font-weight:500;">Fecha Fin:</label>
+            <input type="date" id="filter-date-end" class="form-input" style="font-size:0.85rem; height:38px; padding:4px 8px;" value="${endDate}" onchange="${onApplyGlobal}">
+          </div>
+
+          <!-- Botones de Acción -->
+          <div style="display:flex; gap:0.5rem; align-items:center; margin-top:4px;">
+            <button id="btn-apply-filters" class="btn btn-primary btn-sm" style="height:38px; padding:0 1rem; display:inline-flex; align-items:center; gap:4px;" onclick="${onApplyGlobal}">
+              <span>🔍 Aplicar</span>
+            </button>
+            <button id="btn-reset-filters" class="btn btn-outline btn-sm" style="height:38px; padding:0 0.75rem; display:inline-flex; align-items:center;" onclick="${onResetGlobal}" title="Restablecer filtros por defecto">
+              <span>🔄 Limpiar</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleCustomDateInputs(periodValue) {
+    const isCustom = periodValue === 'custom';
+    const startGrp = document.getElementById('group-date-start');
+    const endGrp = document.getElementById('group-date-end');
+    if (startGrp) startGrp.style.display = isCustom ? 'block' : 'none';
+    if (endGrp) endGrp.style.display = isCustom ? 'block' : 'none';
+  }
+
   return {
     showToast,
     showModal,
@@ -763,6 +854,8 @@ App.UI = (() => {
     getFormData,
     renderBreadcrumbs,
     renderSearchBar,
+    renderAdvancedFilterBar,
+    toggleCustomDateInputs,
     renderHeader,
     initHeaderInteractions,
     renderTable,

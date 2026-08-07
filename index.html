@@ -22,9 +22,9 @@
   <!-- App Styles -->
   <link rel="stylesheet" href="css/styles.css?v=9">
 
-  <!-- Favicon (inline SVG) -->
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦭</text></svg>">
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo_favicon.png">
+  <link rel="apple-touch-icon" href="/assets/logo_favicon.png">
 
   <!-- Import Map para resolver dependencias ES6 en navegadores nativos -->
   <script type="importmap">
@@ -58,6 +58,8 @@
 
   <!-- App Scripts (order matters) -->
   <script src="js/helpers.js"></script>
+  <script src="js/exportUtils.js"></script>
+  <script src="js/exportHeader.js"></script>
   <script src="js/router.js"></script>
   <script src="js/database.js"></script>
   <script src="js/seed.js"></script>
